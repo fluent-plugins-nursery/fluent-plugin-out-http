@@ -4,7 +4,9 @@ Gem::Specification.new do |gem|
   gem.name          = "fluent-plugin-out-http"
   gem.version       = "0.1.0"
   gem.authors       = ["Marica Odagaki"]
-  gem.summary       = %q{A generic Fluentd output plugin to post records via HTTP}
+  gem.email         = ["ento.entotto@gmail.com"]
+  gem.summary       = %q{A generic Fluentd output plugin to send logs to an HTTP endpoint}
+  gem.description   = gem.summary
   gem.homepage      = "https://github.com/ento/fluent-plugin-out-http"
 
   gem.files         = `git ls-files`.split($\)
