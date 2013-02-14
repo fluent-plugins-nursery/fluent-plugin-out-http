@@ -20,4 +20,4 @@ A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint.
 Heavily based on [fluent-plugin-growthforecast][2]
 
   [1]: http://fluentd.org/
-  [2]: https://github.com/tagomoris/fluent-plugin-growthforecast/blob/master/README.md
+  [2]: https://github.com/tagomoris/fluent-plugin-growthforecast
