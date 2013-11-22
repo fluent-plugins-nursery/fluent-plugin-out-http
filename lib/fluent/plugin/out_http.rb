@@ -7,6 +7,7 @@ class Fluent::HTTPOutput < Fluent::Output
     super
     require 'net/http'
     require 'uri'
+    require 'yajl'
   end
 
   # Endpoint URL ex. localhost.local/api/
@@ -77,7 +78,7 @@ class Fluent::HTTPOutput < Fluent::Output
   end
 
   def set_json_body(req, data)
-    req.body = JSON.dump(data)
+    req.body = Yajl.dump(data)
     req['Content-Type'] = 'application/json'
   end
 
