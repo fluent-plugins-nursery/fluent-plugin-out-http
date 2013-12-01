@@ -15,6 +15,7 @@ class HTTPOutputTestBase < Test::Unit::TestCase
     @posts = []
     @puts = []
     @prohibited = 0
+    @requests = 0
     @auth = false
     @dummy_server_thread = Thread.new do
       srv = if ENV['VERBOSE']
@@ -26,6 +27,7 @@ class HTTPOutputTestBase < Test::Unit::TestCase
       begin
         allowed_methods = %w(POST PUT)
         srv.mount_proc('/api/') { |req,res|
+          @requests += 1
           unless allowed_methods.include? req.request_method
             res.status = 405
             res.body = 'request method mismatch'
@@ -145,6 +147,10 @@ class HTTPOutputTest < HTTPOutputTestBase
     http_method put
   ]
 
+  CONFIG_HTTP_ERROR = %[
+    endpoint_url https://127.0.0.1:#{TEST_LISTEN_PORT + 1}/api/
+  ]
+
   RATE_LIMIT_MSEC = 1200
 
   CONFIG_RATE_LIMIT = %[
@@ -221,6 +227,16 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_equal 1, record[:json]['otherfield']
     assert_equal binary_string, record[:json]['binary']
     assert_nil record[:auth]
+  end
+
+  def test_http_error
+    d = create_driver CONFIG_HTTP_ERROR
+    d.emit({ 'field1' => 50 })
+    d.run
+    # drive asserts the next output chain is called;
+    # so no exception means our plugin handled the error
+
+    assert_equal 0, @requests
   end
 
   def test_rate_limiting

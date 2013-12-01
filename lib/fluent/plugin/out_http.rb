@@ -108,7 +108,12 @@ class Fluent::HTTPOutput < Fluent::Output
       $log.warn "Net::HTTP.#{req.method.capitalize} raises exception: #{$!.class}, '#{$!.message}'"
     end
     unless res and res.is_a?(Net::HTTPSuccess)
-      $log.warn "failed to #{req.method} #{uri} (#{res.code} #{res.message} #{res.body})"
+      res_summary = if res
+                      "#{res.code} #{res.message} #{res.body}"
+                    else
+                      "res=nil"
+                    end
+      $log.warn "failed to #{req.method} #{uri} (#{res_summary})"
     end
   end
 
