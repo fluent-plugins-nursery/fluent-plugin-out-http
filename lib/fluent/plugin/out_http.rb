@@ -1,5 +1,3 @@
-require 'json'
-
 class Fluent::HTTPOutput < Fluent::Output
   Fluent::Plugin.register_output('http', self)
 
