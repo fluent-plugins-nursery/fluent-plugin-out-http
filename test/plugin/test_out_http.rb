@@ -1,4 +1,6 @@
-require 'json'
+# -*- coding: utf-8 -*-
+require 'uri'
+require 'yajl'
 require 'fluent/test/http_output_test'
 require 'fluent/plugin/out_http'
 
@@ -41,7 +43,7 @@ class HTTPOutputTestBase < Test::Unit::TestCase
 
           record = {:auth => nil}
           if req.content_type == 'application/json'
-            record[:json] = JSON.parse(req.body)
+            record[:json] = Yajl.load(req.body)
           else
             record[:form] = Hash[*(req.body.split('&').map{|kv|kv.split('=')}.flatten)]
           end
@@ -166,7 +168,7 @@ class HTTPOutputTest < HTTPOutputTestBase
 
   def test_emit_form
     d = create_driver
-    d.emit({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1 })
+    d.emit({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => "\xe3\x81\x82".force_encoding("ascii-8bit") })
     d.run
 
     assert_equal 1, @posts.size
@@ -176,6 +178,7 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_equal '20', record[:form]['field2']
     assert_equal '10', record[:form]['field3']
     assert_equal '1', record[:form]['otherfield']
+    assert_equal URI.escape("あ"), record[:form]['binary']
     assert_nil record[:auth]
 
     d.emit({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1 })
@@ -204,8 +207,9 @@ class HTTPOutputTest < HTTPOutputTestBase
   end
 
   def test_emit_json
+    binary_string = "\xe3\x81\x82".force_encoding("ascii-8bit")
     d = create_driver CONFIG_JSON
-    d.emit({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1 })
+    d.emit({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => binary_string })
     d.run
 
     assert_equal 1, @posts.size
@@ -215,6 +219,7 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_equal 20, record[:json]['field2']
     assert_equal 10, record[:json]['field3']
     assert_equal 1, record[:json]['otherfield']
+    assert_equal binary_string, record[:json]['binary']
     assert_nil record[:auth]
   end
 
