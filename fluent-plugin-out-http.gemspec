@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |gem|
   gem.name          = "fluent-plugin-out-http"
-  gem.version       = "0.1.0"
+  gem.version       = "0.1.1"
   gem.authors       = ["Marica Odagaki"]
   gem.email         = ["ento.entotto@gmail.com"]
   gem.summary       = %q{A generic Fluentd output plugin to send logs to an HTTP endpoint}
@@ -14,8 +14,8 @@ Gem::Specification.new do |gem|
   gem.test_files    = gem.files.grep(%r{^(test|spec|features)/})
   gem.require_paths = ["lib"]
 
+  gem.add_runtime_dependency "yajl-ruby", "~> 1.0"
+  gem.add_runtime_dependency "fluentd", "~> 0.10.0"
   gem.add_development_dependency "bundler"
-  gem.add_development_dependency "json"
-  gem.add_development_dependency "fluentd"
-  gem.add_runtime_dependency "fluentd"
+  gem.add_development_dependency "rake"
 end
