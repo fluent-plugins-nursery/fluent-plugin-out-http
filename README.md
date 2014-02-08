@@ -1,4 +1,4 @@
-# fluent-plugin-out-http
+# fluent-plugin-out-http, a plugin for [Fluentd](http://fluentd.org)
 
 A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint.
 
