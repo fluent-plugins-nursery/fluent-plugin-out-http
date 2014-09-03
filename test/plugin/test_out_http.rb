@@ -184,7 +184,7 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_equal '20', record[:form]['field2']
     assert_equal '10', record[:form]['field3']
     assert_equal '1', record[:form]['otherfield']
-    assert_equal URI.escape("あ"), record[:form]['binary']
+    assert_equal URI.encode_www_form_component("あ").upcase, record[:form]['binary'].upcase
     assert_nil record[:auth]
 
     d.emit({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1 })
@@ -254,7 +254,8 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert last_emit + RATE_LIMIT_MSEC > _current_msec, "Still under rate limiting interval"
     assert_equal 1, @posts.size
 
-    sleep (last_emit + RATE_LIMIT_MSEC - _current_msec) * 0.001
+    wait_msec = 500
+    sleep (last_emit + RATE_LIMIT_MSEC - _current_msec + wait_msec) * 0.001
     
     assert last_emit + RATE_LIMIT_MSEC < _current_msec, "No longer under rate limiting interval"
     d.emit(record)
