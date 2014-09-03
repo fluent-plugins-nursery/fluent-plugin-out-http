@@ -104,8 +104,7 @@ class Fluent::HTTPOutput < Fluent::Output
       end
       @last_request_time = Time.now.to_f
       res = Net::HTTP.new(uri.host, uri.port).start {|http| http.request(req) }
-
-    rescue IOError, EOFError, SystemCallError, SocketError, Net::HTTPBadResponse, Timeout::Error
+    rescue # rescue all StandardErrors
       # server didn't respond
       $log.warn "Net::HTTP.#{req.method.capitalize} raises exception: #{$!.class}, '#{$!.message}'"
     else
@@ -117,7 +116,6 @@ class Fluent::HTTPOutput < Fluent::Output
                         end
           $log.warn "failed to #{req.method} #{uri} (#{res_summary})"
        end #end unless
-
     end # end begin
   end # end send_request
 
