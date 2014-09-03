@@ -97,25 +97,29 @@ class Fluent::HTTPOutput < Fluent::Output
     end
     
     res = nil
+
     begin
       if @auth and @auth == :basic
         req.basic_auth(@username, @password)
       end
       @last_request_time = Time.now.to_f
       res = Net::HTTP.new(uri.host, uri.port).start {|http| http.request(req) }
-    rescue IOError, EOFError, SystemCallError
+
+    rescue IOError, EOFError, SystemCallError, SocketError, Net::HTTPBadResponse, Timeout::Error
       # server didn't respond
       $log.warn "Net::HTTP.#{req.method.capitalize} raises exception: #{$!.class}, '#{$!.message}'"
-    end
-    unless res and res.is_a?(Net::HTTPSuccess)
-      res_summary = if res
-                      "#{res.code} #{res.message} #{res.body}"
-                    else
-                      "res=nil"
-                    end
-      $log.warn "failed to #{req.method} #{uri} (#{res_summary})"
-    end
-  end
+    else
+       unless res and res.is_a?(Net::HTTPSuccess)
+          res_summary = if res
+                           "#{res.code} #{res.message} #{res.body}"
+                        else
+                           "res=nil"
+                        end
+          $log.warn "failed to #{req.method} #{uri} (#{res_summary})"
+       end #end unless
+
+    end # end begin
+  end # end send_request
 
   def handle_record(tag, time, record)
     req, uri = create_request(tag, time, record)
