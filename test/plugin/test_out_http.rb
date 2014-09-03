@@ -151,6 +151,11 @@ class HTTPOutputTest < HTTPOutputTestBase
     endpoint_url https://127.0.0.1:#{TEST_LISTEN_PORT + 1}/api/
   ]
 
+  CONFIG_HTTP_ERROR_SUPPRESSED = %[
+    endpoint_url https://127.0.0.1:#{TEST_LISTEN_PORT + 1}/api/
+    raise_on_error false
+  ]
+
   RATE_LIMIT_MSEC = 1200
 
   CONFIG_RATE_LIMIT = %[
@@ -229,8 +234,15 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_nil record[:auth]
   end
 
-  def test_http_error
+  def test_http_error_is_raised
     d = create_driver CONFIG_HTTP_ERROR
+    assert_raise Errno::ECONNREFUSED do
+      d.emit({ 'field1' => 50 })
+    end
+  end
+
+  def test_http_error_is_suppressed_with_raise_on_error_false
+    d = create_driver CONFIG_HTTP_ERROR_SUPPRESSED
     d.emit({ 'field1' => 50 })
     d.run
     # drive asserts the next output chain is called;

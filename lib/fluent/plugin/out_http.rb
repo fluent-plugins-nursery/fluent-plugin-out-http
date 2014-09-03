@@ -21,6 +21,9 @@ class Fluent::HTTPOutput < Fluent::Output
   # since the last one.
   config_param :rate_limit_msec, :integer, :default => 0
 
+  # Raise errors that were rescued during HTTP requests?
+  config_param :raise_on_error, :bool, :default => true
+
   # nil | 'none' | 'basic'
   config_param :authentication, :string, :default => nil 
   config_param :username, :string, :default => ''
@@ -104,9 +107,10 @@ class Fluent::HTTPOutput < Fluent::Output
       end
       @last_request_time = Time.now.to_f
       res = Net::HTTP.new(uri.host, uri.port).start {|http| http.request(req) }
-    rescue # rescue all StandardErrors
+    rescue => e # rescue all StandardErrors
       # server didn't respond
-      $log.warn "Net::HTTP.#{req.method.capitalize} raises exception: #{$!.class}, '#{$!.message}'"
+      $log.warn "Net::HTTP.#{req.method.capitalize} raises exception: #{e.class}, '#{e.message}'"
+      raise e if @raise_on_error
     else
        unless res and res.is_a?(Net::HTTPSuccess)
           res_summary = if res
