@@ -1,3 +1,24 @@
+class Hash
+  """
+  each traverse in hash
+  """
+  def each_deep(&proc)
+    self.each_deep_detail([], &proc)
+  end
+
+  def each_deep_detail(directory, &proc)
+    self.each do |k, v|
+      current = directory + [k]
+      if v.kind_of?(v.class)
+        v.each_deep_detail(current, &proc)
+      else
+        yield(current, v)
+      end
+    end
+  end
+
+end
+
 class Fluent::HTTPOutput < Fluent::Output
   Fluent::Plugin.register_output('http', self)
 
@@ -13,7 +34,7 @@ class Fluent::HTTPOutput < Fluent::Output
 
   # HTTP method
   config_param :http_method, :string, :default => :post
-  
+
   # form | json
   config_param :serializer, :string, :default => :form
 
@@ -51,6 +72,12 @@ class Fluent::HTTPOutput < Fluent::Output
             else
               :none
             end
+    @headers = {}
+    conf.elements.each do |element|
+      if element.name == 'headers'
+        @headers = element.to_hash
+      end
+    end
   end
 
   def start
@@ -62,7 +89,11 @@ class Fluent::HTTPOutput < Fluent::Output
   end
 
   def format_url(tag, time, record)
-    @endpoint_url
+    result_url = @endpoint_url
+    record.each_deep do |key_dir, value|
+      result_url = result_url.gsub(/<#{key_dir.join(".")}>/, value.to_s)
+    end
+    return result_url
   end
 
   def set_body(req, tag, time, record)
@@ -75,6 +106,9 @@ class Fluent::HTTPOutput < Fluent::Output
   end
 
   def set_header(req, tag, time, record)
+    @headers.each do |key, value|
+      req[key] = value
+    end
     req
   end
 
@@ -92,13 +126,13 @@ class Fluent::HTTPOutput < Fluent::Output
     return req, uri
   end
 
-  def send_request(req, uri)    
+  def send_request(req, uri)
     is_rate_limited = (@rate_limit_msec != 0 and not @last_request_time.nil?)
     if is_rate_limited and ((Time.now.to_f - @last_request_time) * 1000.0 < @rate_limit_msec)
       $log.info('Dropped request due to rate limiting')
       return
     end
-    
+
     res = nil
 
     begin

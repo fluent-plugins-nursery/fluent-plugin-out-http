@@ -16,6 +16,10 @@ A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint.
       authentication  basic  # default: none
       username        alice  # default: ''
       password        bobpop # default: '', secret: true
+      <headers>
+        HeaderExample1 header1
+        HeaderExample2 header2
+      </headers>
     </match>
 
 ## Usage notes
