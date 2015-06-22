@@ -38,12 +38,16 @@ class Fluent::HTTPOutput < Fluent::Output
   # form | json
   config_param :serializer, :string, :default => :form
 
+  # true | false
+  config_param :use_ssl, :bool, :default => false
+
   # Simple rate limiting: ignore any records within `rate_limit_msec`
   # since the last one.
   config_param :rate_limit_msec, :integer, :default => 0
 
   # Raise errors that were rescued during HTTP requests?
   config_param :raise_on_error, :bool, :default => true
+
 
   # nil | 'none' | 'basic'
   config_param :authentication, :string, :default => nil 
@@ -89,6 +93,12 @@ class Fluent::HTTPOutput < Fluent::Output
   end
 
   def format_url(tag, time, record)
+    '''
+    replace format string to value
+    example
+      /test/<data> =(use {data: 1})> /test/1
+      /test/<hash.data> =(use {hash:{data:2}})> /test/2
+    '''
     result_url = @endpoint_url
     record.each_deep do |key_dir, value|
       result_url = result_url.gsub(/<#{key_dir.join(".")}>/, value.to_s)
@@ -140,7 +150,12 @@ class Fluent::HTTPOutput < Fluent::Output
         req.basic_auth(@username, @password)
       end
       @last_request_time = Time.now.to_f
-      res = Net::HTTP.new(uri.host, uri.port).start {|http| http.request(req) }
+      client = Net::HTTP.new(uri.host, uri.port)
+      if @use_ssl
+        client.use_ssl = true
+        client.ca_file = OpenSSL::X509::DEFAULT_CERT_FILE
+      end
+      res = client.start {|http| http.request(req) }
     rescue => e # rescue all StandardErrors
       # server didn't respond
       $log.warn "Net::HTTP.#{req.method.capitalize} raises exception: #{e.class}, '#{e.message}'"
