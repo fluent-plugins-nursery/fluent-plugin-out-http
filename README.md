@@ -15,7 +15,7 @@ A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint.
       raise_on_error  false  # default: true
       authentication  basic  # default: none
       username        alice  # default: ''
-      password        bobpop # default: ''
+      password        bobpop # default: '', secret: true
     </match>
 
 ## Usage notes
