@@ -27,7 +27,7 @@ class Fluent::HTTPOutput < Fluent::Output
   # nil | 'none' | 'basic'
   config_param :authentication, :string, :default => nil 
   config_param :username, :string, :default => ''
-  config_param :password, :string, :default => ''
+  config_param :password, :string, :default => '', :secret => true
 
   def configure(conf)
     super
