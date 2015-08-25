@@ -8,7 +8,7 @@ A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint.
 
     <match *>
       type http
-      endpoint_url    http://localhost.local/api/<data.id> # <data.id> refres to data.id in the record like {"data": {"id": 1, "name": "foo"}}
+      endpoint_url    http://localhost.local/api/<data.id> # <data.id> refres to data.id in the record like {"data"=> {"id"=> 1, "name"=> "foo"}}
       http_method     put    # default: post
       serializer      json   # default: form
       rate_limit_msec 100    # default: 0 = no rate limiting
