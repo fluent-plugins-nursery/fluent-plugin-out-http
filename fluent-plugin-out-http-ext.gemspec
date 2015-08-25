@@ -1,13 +1,12 @@
 # -*- encoding: utf-8 -*-
 
 Gem::Specification.new do |gem|
-  gem.name          = "fluent-plugin-out-http"
+  gem.name          = "fluent-plugin-out-http-ext"
   gem.version       = "0.1.4"
-  gem.authors       = ["Marica Odagaki"]
-  gem.email         = ["ento.entotto@gmail.com"]
-  gem.summary       = %q{A generic Fluentd output plugin to send logs to an HTTP endpoint}
+  gem.authors       = ["Toshiya Kawasaki"]
+  gem.email         = ["kawasakitoshiya@gmail.com"]
+  gem.summary       = %q{A generic Fluentd output plugin to send logs to an HTTP endpoint with SSL and Header option}
   gem.description   = gem.summary
-  gem.homepage      = "https://github.com/ento/fluent-plugin-out-http"
   gem.licenses      = ["Apache-2.0"]
 
   gem.files         = `git ls-files`.split($\)
