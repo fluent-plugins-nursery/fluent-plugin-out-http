@@ -13,7 +13,7 @@ class Fluent::HTTPOutput < Fluent::Output
 
   # HTTP method
   config_param :http_method, :string, :default => :post
-  
+
   # form | json
   config_param :serializer, :string, :default => :form
 
@@ -25,7 +25,7 @@ class Fluent::HTTPOutput < Fluent::Output
   config_param :raise_on_error, :bool, :default => true
 
   # nil | 'none' | 'basic'
-  config_param :authentication, :string, :default => nil 
+  config_param :authentication, :string, :default => nil
   config_param :username, :string, :default => ''
   config_param :password, :string, :default => '', :secret => true
 
@@ -75,6 +75,8 @@ class Fluent::HTTPOutput < Fluent::Output
   end
 
   def set_header(req, tag, time, record)
+    req['X-Fluent-Tag'] = tag
+    req['X-Fluent-Time'] = time
     req
   end
 
@@ -92,13 +94,13 @@ class Fluent::HTTPOutput < Fluent::Output
     return req, uri
   end
 
-  def send_request(req, uri)    
+  def send_request(req, uri)
     is_rate_limited = (@rate_limit_msec != 0 and not @last_request_time.nil?)
     if is_rate_limited and ((Time.now.to_f - @last_request_time) * 1000.0 < @rate_limit_msec)
       $log.info('Dropped request due to rate limiting')
       return
     end
-    
+
     res = nil
 
     begin
