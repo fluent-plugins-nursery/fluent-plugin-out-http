@@ -20,7 +20,7 @@ class Hash
 end
 
 class Fluent::HTTPOutput < Fluent::Output
-  Fluent::Plugin.register_output('http', self)
+  Fluent::Plugin.register_output('http-ext', self)
 
   def initialize
     super
