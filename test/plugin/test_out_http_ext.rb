@@ -2,7 +2,7 @@
 require 'uri'
 require 'yajl'
 require 'fluent/test/http_output_test'
-require 'fluent/plugin/out_http'
+require 'fluent/plugin/out_http_ext'
 
 
 TEST_LISTEN_PORT = 5126
