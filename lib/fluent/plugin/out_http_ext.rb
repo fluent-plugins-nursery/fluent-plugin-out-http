@@ -9,7 +9,7 @@ class Hash
   def each_deep_detail(directory, &proc)
     self.each do |k, v|
       current = directory + [k]
-      if v.kind_of?(v.class)
+      if v.kind_of?(Hash)
         v.each_deep_detail(current, &proc)
       else
         yield(current, v)
