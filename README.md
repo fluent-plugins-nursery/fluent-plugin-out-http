@@ -1,14 +1,14 @@
-# fluent-plugin-out-http, a plugin for [Fluentd](http://fluentd.org)
+# fluent-plugin-out-http-ext, a plugin for [Fluentd](http://fluentd.org)
 
-A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint.
+**This is a fork of [ento / fluent-plugin-out-http](https://github.com/ento/fluent-plugin-out-http)**
 
-[![Build Status](https://travis-ci.org/ento/fluent-plugin-out-http.svg?branch=master)](https://travis-ci.org/ento/fluent-plugin-out-http)
+A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint
 
 ## Configuration options
 
     <match *>
-      type http
-      endpoint_url    http://localhost.local/api/
+      type http_ext
+      endpoint_url    http://localhost.local/api/<data.id> # <data.id> refres to data.id in the record like {"data"=> {"id"=> 1, "name"=> "foo"}}
       http_method     put    # default: post
       serializer      json   # default: form
       rate_limit_msec 100    # default: 0 = no rate limiting
@@ -16,6 +16,11 @@ A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint.
       authentication  basic  # default: none
       username        alice  # default: ''
       password        bobpop # default: '', secret: true
+      use_ssl         true   # default: false
+      <headers>
+        HeaderExample1 header1
+        HeaderExample2 header2
+      </headers>
     </match>
 
 ## Usage notes
