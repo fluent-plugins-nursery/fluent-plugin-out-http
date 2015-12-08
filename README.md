@@ -1,4 +1,5 @@
 # fluent-plugin-out-http-ext, a plugin for [Fluentd](http://fluentd.org)
+[![Build Status](https://travis-ci.org/kawasakitoshiya/fluent-plugin-out-http-ext.svg)](https://travis-ci.org/kawasakitoshiya/fluent-plugin-out-http-ext)
 
 **This is a fork of [ento / fluent-plugin-out-http](https://github.com/ento/fluent-plugin-out-http)**
 

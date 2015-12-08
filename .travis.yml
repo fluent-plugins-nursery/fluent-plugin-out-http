@@ -4,11 +4,9 @@ rvm:
   - 2.1
   - 2.2
   - ruby-head
-  - rbx-2
 
 os:
   - linux
-  - osx
 
 gemfile:
   - Gemfile
@@ -18,4 +16,3 @@ script: bundle exec rake test
 matrix:
   allow_failures:
     - rvm: ruby-head
-    - rvm: rbx-2
