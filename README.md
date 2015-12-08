@@ -1,5 +1,8 @@
 # fluent-plugin-out-http-ext, a plugin for [Fluentd](http://fluentd.org)
 
+[![Build Status](https://travis-ci.org/kawasakitoshiya/fluent-plugin-out-http-ext.svg)](https://travis-ci.org/kawasakitoshiya/fluent-plugin-out-http-ext)
+[![Coverage Status](https://coveralls.io/repos/kawasakitoshiya/fluent-plugin-out-http-ext/badge.svg?branch=master&service=github)](https://coveralls.io/github/kawasakitoshiya/fluent-plugin-out-http-ext?branch=master)
+
 **This is a fork of [ento / fluent-plugin-out-http](https://github.com/ento/fluent-plugin-out-http)**
 
 A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint
