@@ -17,6 +17,7 @@ class HTTPOutputTestBase < Test::Unit::TestCase
     @prohibited = 0
     @requests = 0
     @auth = false
+    @status = 200
     @dummy_server_thread = Thread.new do
       srv = if ENV['VERBOSE']
               WEBrick::HTTPServer.new({:BindAddress => '127.0.0.1', :Port => TEST_LISTEN_PORT})
@@ -52,7 +53,7 @@ class HTTPOutputTestBase < Test::Unit::TestCase
 
           instance_variable_get("@#{req.request_method.downcase}s").push(record)
 
-          res.status = 200
+          res.status = @status
         }
         srv.mount_proc('/') { |req,res|
           res.status = 200
@@ -81,11 +82,11 @@ class HTTPOutputTestBase < Test::Unit::TestCase
         end
       end
       cv.signal
-    } 
+    }
     mutex = Mutex.new
     mutex.synchronize {
       cv.wait(mutex)
-    } 
+    }
   end
 
   def test_dummy_server
@@ -154,6 +155,11 @@ class HTTPOutputTest < HTTPOutputTestBase
   CONFIG_HTTP_ERROR_SUPPRESSED = %[
     endpoint_url https://127.0.0.1:#{TEST_LISTEN_PORT + 1}/api/
     raise_on_error false
+  ]
+
+  CONFIG_RAISE_ON_HTTP_FAILURE = %[
+    endpoint_url http://127.0.0.1:#{TEST_LISTEN_PORT}/api/
+    raise_on_http_failure true
   ]
 
   RATE_LIMIT_MSEC = 1200
@@ -250,6 +256,17 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_equal 0, @requests
   end
 
+  def test_http_failure_is_raised_on_http_failure_true
+    @status = 500
+
+    d = create_driver CONFIG_RAISE_ON_HTTP_FAILURE
+    assert_raise RuntimeError do
+      d.emit({ 'field1' => 50 })
+    end
+
+    @status = 200
+  end
+
   def test_rate_limiting
     d = create_driver CONFIG_RATE_LIMIT
     record = { :k => 1 }
@@ -267,7 +284,7 @@ class HTTPOutputTest < HTTPOutputTestBase
 
     wait_msec = 500
     sleep (last_emit + RATE_LIMIT_MSEC - _current_msec + wait_msec) * 0.001
-    
+
     assert last_emit + RATE_LIMIT_MSEC < _current_msec, "No longer under rate limiting interval"
     d.emit(record)
     d.run
@@ -277,7 +294,7 @@ class HTTPOutputTest < HTTPOutputTestBase
   def _current_msec
     Time.now.to_f * 1000
   end
-  
+
   def test_auth
     @auth = true # enable authentication of dummy server
 
