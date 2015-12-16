@@ -256,6 +256,17 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_equal 0, @requests
   end
 
+  def test_http_failure_is_not_raised_on_http_failure_true_and_status_201
+    @status = 201
+
+    d = create_driver CONFIG_RAISE_ON_HTTP_FAILURE
+    assert_nothing_raised do
+      d.emit({ 'field1' => 50 })
+    end
+
+    @status = 200
+  end
+
   def test_http_failure_is_raised_on_http_failure_true
     @status = 500
 
