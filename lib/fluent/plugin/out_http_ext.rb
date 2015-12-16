@@ -48,9 +48,12 @@ class Fluent::HTTPOutput < Fluent::Output
   # Raise errors that were rescued during HTTP requests?
   config_param :raise_on_error, :bool, :default => true
 
+  # Raise errors when HTTP response code was not successful.
+  config_param :raise_on_http_failure, :bool, :default => false
+
 
   # nil | 'none' | 'basic'
-  config_param :authentication, :string, :default => nil 
+  config_param :authentication, :string, :default => nil
   config_param :username, :string, :default => ''
   config_param :password, :string, :default => '', :secret => true
 
@@ -167,7 +170,9 @@ class Fluent::HTTPOutput < Fluent::Output
                         else
                            "res=nil"
                         end
-          $log.warn "failed to #{req.method} #{uri} (#{res_summary})"
+          warning = "failed to #{req.method} #{uri} (#{res_summary})"
+          $log.warn warning
+          raise warning if @raise_on_http_failure
        end #end unless
     end # end begin
   end # end send_request
