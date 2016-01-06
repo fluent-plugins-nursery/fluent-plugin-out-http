@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.5
+* Add headers directive
+* Add use_ssl directive
+
 ## 0.1.4
 * #11 Updated Fluentd dependency to:  [">= 0.10.0", "< 2"]
 * #10 `password` is now marked as a [secret option](https://github.com/fluent/fluentd/pull/604)
