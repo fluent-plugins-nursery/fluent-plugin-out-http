@@ -86,7 +86,7 @@ class Fluent::HTTPOutput < Fluent::Output
   def create_request(tag, time, record)
     url = format_url(tag, time, record)
     uri = URI.parse(url)
-    req = Net::HTTP.const_get(@http_method.to_s.capitalize).new(uri.path)
+    req = Net::HTTP.const_get(@http_method.to_s.capitalize).new(uri.request_uri)
     set_body(req, tag, time, record)
     set_header(req, tag, time, record)
     return req, uri
