@@ -28,6 +28,8 @@ class Fluent::HTTPOutput < Fluent::Output
   config_param :authentication, :string, :default => nil 
   config_param :username, :string, :default => ''
   config_param :password, :string, :default => '', :secret => true
+  config_param :keys_mapping, :hash, :default => {},
+               :desc => "The names of the keys mapping to map existing tags to those from influxDB."
 
   def configure(conf)
     super
@@ -65,7 +67,21 @@ class Fluent::HTTPOutput < Fluent::Output
     @endpoint_url
   end
 
+  def remap_keys(record)
+    if record.empty? || @keys_mapping.empty?
+      return
+    end
+
+    @keys_mapping.each_pair do |k, key|
+      if record.has_key?(k)
+        record[key] = record[k]
+        record.delete(k)
+      end
+    end
+  end
+
   def set_body(req, tag, time, record)
+    remap_keys(record)
     if @serializer == :json
       set_json_body(req, record)
     else
