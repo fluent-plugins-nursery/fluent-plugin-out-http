@@ -220,7 +220,7 @@ class HTTPOutputTest < HTTPOutputTestBase
   end
 
   def test_emit_json
-    binary_string = "\xe3\x81\x82".force_encoding("ascii-8bit")
+    binary_string = "\xe3\x81\x82"
     d = create_driver CONFIG_JSON
     d.emit({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => binary_string })
     d.run
