@@ -92,9 +92,10 @@ class HTTPOutputTestBase < Test::Unit::TestCase
     host = '127.0.0.1'
     port = TEST_LISTEN_PORT
     client = Net::HTTP.start(host, port)
+    post_header = { 'Content-Type' => 'application/x-www-form-urlencoded' }
 
     assert_equal '200', client.request_get('/').code
-    assert_equal '200', client.request_post('/api/service/metrics/hoge', 'number=1&mode=gauge').code
+    assert_equal '200', client.request_post('/api/service/metrics/hoge', 'number=1&mode=gauge', post_header).code
 
     assert_equal 1, @posts.size
 
@@ -104,11 +105,12 @@ class HTTPOutputTestBase < Test::Unit::TestCase
 
     @auth = true
 
-    assert_equal '403', client.request_post('/api/service/metrics/pos', 'number=30&mode=gauge').code
+    assert_equal '403', client.request_post('/api/service/metrics/pos', 'number=30&mode=gauge', post_header).code
 
     req_with_auth = lambda do |number, mode, user, pass|
       url = URI.parse("http://#{host}:#{port}/api/service/metrics/pos")
       req = Net::HTTP::Post.new(url.path)
+      req.content_type = 'application/x-www-form-urlencoded'
       req.basic_auth user, pass
       req.set_form_data({'number'=>number, 'mode'=>mode})
       req
