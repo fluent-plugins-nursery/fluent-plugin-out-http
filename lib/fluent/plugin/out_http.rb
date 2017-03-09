@@ -51,6 +51,8 @@ class Fluent::HTTPOutput < Fluent::Output
             else
               :none
             end
+
+    @last_request_time = nil
   end
 
   def start
