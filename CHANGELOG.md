@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+### Added 
+* add ssl support via "https" protocol in url (uses ruby-2.1 syntax)
+### Changed
+* update tests to remove some warnings
+* udpate failing binary test to use UTF-8
+### Removed
+* droped ruby 1.9 and 2.0 support
+
 ## 0.1.4
 * #11 Updated Fluentd dependency to:  [">= 0.10.0", "< 2"]
 * #10 `password` is now marked as a [secret option](https://github.com/fluent/fluentd/pull/604)
