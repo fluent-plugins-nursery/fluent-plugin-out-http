@@ -10,7 +10,7 @@
   * Removed some warnings
   * Fixed failing binary test to use UTF-8
 ### Removed
-* Dropped support of fluentd < 0.14.0 and Ruby 1.9 and 2.0
+* Dropped support of fluentd < 0.12.0 and Ruby 1.9-2.0
 
 ## 0.1.4
 * #11 Updated Fluentd dependency to:  [">= 0.10.0", "< 2"]
