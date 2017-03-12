@@ -2,12 +2,13 @@
 
 ## [Unreleased]
 ### Added
-* add ssl support via "https" protocol in url (uses ruby-2.1 syntax)
+* SSL is now supported if `endpoint_url` uses the `https` scheme (uses ruby-2.1 syntax internally)
 ### Changed
-* update tests to remove some warnings
-* udpate failing binary test to use UTF-8
+* Fixed tests:
+  * Removed some warnings
+  * Fixed failing binary test to use UTF-8
 ### Removed
-* dropped support of fluentd < 0.14.0 and ruby 1.9 and 2.0
+* Dropped support of fluentd < 0.14.0 and Ruby 1.9 and 2.0
 
 ## 0.1.4
 * #11 Updated Fluentd dependency to:  [">= 0.10.0", "< 2"]
