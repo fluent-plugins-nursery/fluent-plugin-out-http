@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+require 'net/http'
 require 'uri'
 require 'yajl'
 require 'fluent/test/http_output_test'
