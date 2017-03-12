@@ -39,16 +39,3 @@ module WEBrick::HTTPServlet
     alias do_DELETE do_GET
   end
 end
-
-def get_code(server, port, path, headers={})
-  require 'net/http' 
-  Net::HTTP.start(server, port){|http|
-    http.get(path, headers).code
-  } 
-end 
-def get_content(server, port, path, headers={})
-  require 'net/http'
-  Net::HTTP.start(server, port){|http|
-    http.get(path, headers).body
-  } 
-end

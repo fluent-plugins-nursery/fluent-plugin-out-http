@@ -108,8 +108,7 @@ class HTTPOutputTestBase < Test::Unit::TestCase
     assert_equal '403', client.request_post('/api/service/metrics/pos', 'number=30&mode=gauge', post_header).code
 
     req_with_auth = lambda do |number, mode, user, pass|
-      url = URI.parse("http://#{host}:#{port}/api/service/metrics/pos")
-      req = Net::HTTP::Post.new(url.path)
+      req = Net::HTTP::Post.new("/api/service/metrics/pos")
       req.content_type = 'application/x-www-form-urlencoded'
       req.basic_auth user, pass
       req.set_form_data({'number'=>number, 'mode'=>mode})
@@ -270,7 +269,7 @@ class HTTPOutputTest < HTTPOutputTestBase
 
     wait_msec = 500
     sleep (last_emit + RATE_LIMIT_MSEC - _current_msec + wait_msec) * 0.001
-    
+
     assert last_emit + RATE_LIMIT_MSEC < _current_msec, "No longer under rate limiting interval"
     d.emit(record)
     d.run
@@ -280,7 +279,7 @@ class HTTPOutputTest < HTTPOutputTestBase
   def _current_msec
     Time.now.to_f * 1000
   end
-  
+
   def test_auth
     @auth = true # enable authentication of dummy server
 

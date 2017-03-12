@@ -8,7 +8,7 @@ class Fluent::HTTPOutput < Fluent::Output
     require 'yajl'
   end
 
-  # Endpoint URL ex. localhost.local/api/
+  # Endpoint URL ex. http://localhost.local/api/
   config_param :endpoint_url, :string
 
   # Set Net::HTTP.verify_mode to `OpenSSL::SSL::VERIFY_NONE`
@@ -16,7 +16,7 @@ class Fluent::HTTPOutput < Fluent::Output
 
   # HTTP method
   config_param :http_method, :string, :default => :post
-  
+
   # form | json
   config_param :serializer, :string, :default => :form
 
@@ -103,13 +103,13 @@ class Fluent::HTTPOutput < Fluent::Output
     return req, uri
   end
 
-  def send_request(req, uri)    
+  def send_request(req, uri)
     is_rate_limited = (@rate_limit_msec != 0 and not @last_request_time.nil?)
     if is_rate_limited and ((Time.now.to_f - @last_request_time) * 1000.0 < @rate_limit_msec)
       $log.info('Dropped request due to rate limiting')
       return
     end
-    
+
     res = nil
 
     begin
