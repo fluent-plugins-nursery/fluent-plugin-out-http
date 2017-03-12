@@ -11,6 +11,9 @@ class Fluent::HTTPOutput < Fluent::Output
   # Endpoint URL ex. localhost.local/api/
   config_param :endpoint_url, :string
 
+  # Set Net::HTTP.verify_mode to `OpenSSL::SSL::VERIFY_NONE`
+  config_param :ssl_no_verify, :bool, :default => false
+
   # HTTP method
   config_param :http_method, :string, :default => :post
   
@@ -25,12 +28,18 @@ class Fluent::HTTPOutput < Fluent::Output
   config_param :raise_on_error, :bool, :default => true
 
   # nil | 'none' | 'basic'
-  config_param :authentication, :string, :default => nil 
+  config_param :authentication, :string, :default => nil
   config_param :username, :string, :default => ''
   config_param :password, :string, :default => '', :secret => true
 
   def configure(conf)
     super
+
+    @ssl_verify_mode = if @ssl_no_verify
+                         OpenSSL::SSL::VERIFY_NONE
+                       else
+                         OpenSSL::SSL::VERIFY_PEER
+                       end
 
     serializers = [:json, :form]
     @serializer = if serializers.include? @serializer.intern
@@ -108,7 +117,11 @@ class Fluent::HTTPOutput < Fluent::Output
         req.basic_auth(@username, @password)
       end
       @last_request_time = Time.now.to_f
-      res = Net::HTTP.start(uri.host, uri.port, :use_ssl => uri.scheme == 'https') {|http| http.request(req) }
+      http_opts = {
+        :use_ssl => uri.scheme == 'https'
+      }
+      http_opts[:verify_mode] = @ssl_verify_mode if http_opts[:use_ssl]
+      res = Net::HTTP.start(uri.host, uri.port, **http_opts) {|http| http.request(req) }
     rescue => e # rescue all StandardErrors
       # server didn't respond
       $log.warn "Net::HTTP.#{req.method.capitalize} raises exception: #{e.class}, '#{e.message}'"
