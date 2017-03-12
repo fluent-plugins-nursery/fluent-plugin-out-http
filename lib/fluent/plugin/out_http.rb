@@ -103,6 +103,14 @@ class Fluent::HTTPOutput < Fluent::Output
     return req, uri
   end
 
+  def http_opts(uri)
+      opts = {
+        :use_ssl => uri.scheme == 'https'
+      }
+      opts[:verify_mode] = @ssl_verify_mode if opts[:use_ssl]
+      opts
+  end
+
   def send_request(req, uri)
     is_rate_limited = (@rate_limit_msec != 0 and not @last_request_time.nil?)
     if is_rate_limited and ((Time.now.to_f - @last_request_time) * 1000.0 < @rate_limit_msec)
@@ -117,11 +125,7 @@ class Fluent::HTTPOutput < Fluent::Output
         req.basic_auth(@username, @password)
       end
       @last_request_time = Time.now.to_f
-      http_opts = {
-        :use_ssl => uri.scheme == 'https'
-      }
-      http_opts[:verify_mode] = @ssl_verify_mode if http_opts[:use_ssl]
-      res = Net::HTTP.start(uri.host, uri.port, **http_opts) {|http| http.request(req) }
+      res = Net::HTTP.start(uri.host, uri.port, **http_opts(uri)) {|http| http.request(req) }
     rescue => e # rescue all StandardErrors
       # server didn't respond
       $log.warn "Net::HTTP.#{req.method.capitalize} raises exception: #{e.class}, '#{e.message}'"

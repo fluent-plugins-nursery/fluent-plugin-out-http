@@ -30,6 +30,7 @@ class Test::Unit::TestCase
 end
 
 require 'webrick'
+require 'webrick/https'
 
 # to handle POST/PUT/DELETE ...
 module WEBrick::HTTPServlet
