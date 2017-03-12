@@ -1,13 +1,13 @@
 # Changelog
 
 ## [Unreleased]
-### Added 
+### Added
 * add ssl support via "https" protocol in url (uses ruby-2.1 syntax)
 ### Changed
 * update tests to remove some warnings
 * udpate failing binary test to use UTF-8
 ### Removed
-* droped ruby 1.9 and 2.0 support
+* dropped support of fluentd < 0.14.0 and ruby 1.9 and 2.0
 
 ## 0.1.4
 * #11 Updated Fluentd dependency to:  [">= 0.10.0", "< 2"]
