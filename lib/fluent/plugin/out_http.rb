@@ -8,12 +8,15 @@ class Fluent::HTTPOutput < Fluent::Output
     require 'yajl'
   end
 
-  # Endpoint URL ex. localhost.local/api/
+  # Endpoint URL ex. http://localhost.local/api/
   config_param :endpoint_url, :string
+
+  # Set Net::HTTP.verify_mode to `OpenSSL::SSL::VERIFY_NONE`
+  config_param :ssl_no_verify, :bool, :default => false
 
   # HTTP method
   config_param :http_method, :string, :default => :post
-  
+
   # form | json
   config_param :serializer, :string, :default => :form
 
@@ -25,12 +28,18 @@ class Fluent::HTTPOutput < Fluent::Output
   config_param :raise_on_error, :bool, :default => true
 
   # nil | 'none' | 'basic'
-  config_param :authentication, :string, :default => nil 
+  config_param :authentication, :string, :default => nil
   config_param :username, :string, :default => ''
   config_param :password, :string, :default => '', :secret => true
 
   def configure(conf)
     super
+
+    @ssl_verify_mode = if @ssl_no_verify
+                         OpenSSL::SSL::VERIFY_NONE
+                       else
+                         OpenSSL::SSL::VERIFY_PEER
+                       end
 
     serializers = [:json, :form]
     @serializer = if serializers.include? @serializer.intern
@@ -51,6 +60,8 @@ class Fluent::HTTPOutput < Fluent::Output
             else
               :none
             end
+
+    @last_request_time = nil
   end
 
   def start
@@ -92,13 +103,21 @@ class Fluent::HTTPOutput < Fluent::Output
     return req, uri
   end
 
-  def send_request(req, uri)    
+  def http_opts(uri)
+      opts = {
+        :use_ssl => uri.scheme == 'https'
+      }
+      opts[:verify_mode] = @ssl_verify_mode if opts[:use_ssl]
+      opts
+  end
+
+  def send_request(req, uri)
     is_rate_limited = (@rate_limit_msec != 0 and not @last_request_time.nil?)
     if is_rate_limited and ((Time.now.to_f - @last_request_time) * 1000.0 < @rate_limit_msec)
       $log.info('Dropped request due to rate limiting')
       return
     end
-    
+
     res = nil
 
     begin
@@ -106,7 +125,7 @@ class Fluent::HTTPOutput < Fluent::Output
         req.basic_auth(@username, @password)
       end
       @last_request_time = Time.now.to_f
-      res = Net::HTTP.new(uri.host, uri.port).start {|http| http.request(req) }
+      res = Net::HTTP.start(uri.host, uri.port, **http_opts(uri)) {|http| http.request(req) }
     rescue => e # rescue all StandardErrors
       # server didn't respond
       $log.warn "Net::HTTP.#{req.method.capitalize} raises exception: #{e.class}, '#{e.message}'"
