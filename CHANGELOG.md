@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## 0.2.0
 ### Added
 * SSL is now supported if `endpoint_url` uses the `https` scheme (uses ruby-2.1 syntax internally)
 * New config: set `ssl_no_verify` to `true` to bypass SSL certificate verification.
