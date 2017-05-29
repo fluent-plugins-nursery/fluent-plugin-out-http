@@ -8,6 +8,10 @@ class Fluent::HTTPOutput < Fluent::Output
     require 'yajl'
   end
 
+  unless method_defined?(:log)
+    define_method('log') { $log }
+  end
+
   # Endpoint URL ex. http://localhost.local/api/
   config_param :endpoint_url, :string
 
@@ -114,7 +118,7 @@ class Fluent::HTTPOutput < Fluent::Output
   def send_request(req, uri)
     is_rate_limited = (@rate_limit_msec != 0 and not @last_request_time.nil?)
     if is_rate_limited and ((Time.now.to_f - @last_request_time) * 1000.0 < @rate_limit_msec)
-      $log.info('Dropped request due to rate limiting')
+      log.info('Dropped request due to rate limiting')
       return
     end
 
@@ -128,7 +132,7 @@ class Fluent::HTTPOutput < Fluent::Output
       res = Net::HTTP.start(uri.host, uri.port, **http_opts(uri)) {|http| http.request(req) }
     rescue => e # rescue all StandardErrors
       # server didn't respond
-      $log.warn "Net::HTTP.#{req.method.capitalize} raises exception: #{e.class}, '#{e.message}'"
+      log.warn "Net::HTTP.#{req.method.capitalize} raises exception: #{e.class}, '#{e.message}'"
       raise e if @raise_on_error
     else
        unless res and res.is_a?(Net::HTTPSuccess)
@@ -137,7 +141,7 @@ class Fluent::HTTPOutput < Fluent::Output
                         else
                            "res=nil"
                         end
-          $log.warn "failed to #{req.method} #{uri} (#{res_summary})"
+          log.warn "failed to #{req.method} #{uri} (#{res_summary})"
        end #end unless
     end # end begin
   end # end send_request
