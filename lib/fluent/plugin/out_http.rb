@@ -3,6 +3,10 @@ require 'fluent/plugin/output'
 class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   Fluent::Plugin.register_output('http', self)
 
+  helpers :compat_parameters
+
+  DEFAULT_BUFFER_TYPE = "memory"
+
   def initialize
     super
     require 'net/http'
@@ -36,7 +40,13 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   # Switch non-buffered/buffered plugin
   config_param :buffered, :bool, :default => false
 
+  config_section :buffer do
+    config_set_default :@type, DEFAULT_BUFFER_TYPE
+    config_set_default :chunk_keys, ['tag']
+  end
+
   def configure(conf)
+    compat_parameters_convert(conf, :buffer)
     super
 
     @ssl_verify_mode = if @ssl_no_verify
@@ -66,6 +76,7 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
             end
 
     @last_request_time = nil
+    raise Fluent::ConfigError, "'tag' in chunk_keys is required." if !@chunk_key_tag && @buffered
   end
 
   def start
@@ -156,7 +167,15 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   end
 
   def format(tag, time, record)
-    [tag, time, record].to_msgpack
+    [time, record].to_msgpack
+  end
+
+  def formatted_to_msgpack_binary?
+    true
+  end
+
+  def multi_workers_ready?
+    true
   end
 
   def process(tag, es)
@@ -166,7 +185,8 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   end
 
   def write(chunk)
-    chunk.each_msgpack do |tag, time, record|
+    tag = chunk.metadata.tag
+    chunk.msgpack_each do |time, record|
       handle_record(tag, time, record)
     end
   end

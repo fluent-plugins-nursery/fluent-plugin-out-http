@@ -193,6 +193,22 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_equal :json, d.instance.serializer
   end
 
+  test 'lack of tag in chunk_keys' do
+    assert_raise_message(/'tag' in chunk_keys is required./) do
+      create_driver(Fluent::Config::Element.new(
+                      'ROOT', '', {
+                        '@type' => 'http',
+                        'endpoint_url' => "http://127.0.0.1:#{self.class.port}/api/",
+                        'buffered' => true,
+                      }, [
+                        Fluent::Config::Element.new('buffer', 'mykey', {
+                                                      'chunk_keys' => 'mykey'
+                                                    }, [])
+                      ]
+                    ))
+    end
+  end
+
   def test_emit_form
     d = create_driver CONFIG
     d.run(default_tag: 'test.metrics') do
@@ -214,6 +230,70 @@ class HTTPOutputTest < HTTPOutputTestBase
     end
 
     assert_equal 2, @posts.size
+  end
+
+  class BufferedEmitTest < self
+    def test_emit_form
+      d = create_driver CONFIG + %[buffered true]
+      d.run(default_tag: 'test.metrics', shutdown: false) do
+        d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => "\xe3\x81\x82".force_encoding("ascii-8bit") })
+      end
+
+      assert_equal 1, @posts.size
+      record = @posts[0]
+
+      assert_equal '50', record[:form]['field1']
+      assert_equal '20', record[:form]['field2']
+      assert_equal '10', record[:form]['field3']
+      assert_equal '1', record[:form]['otherfield']
+      assert_equal URI.encode_www_form_component("あ").upcase, record[:form]['binary'].upcase
+      assert_nil record[:auth]
+
+      d.run(default_tag: 'test.metrics', shutdown: false) do
+        d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1 })
+      end
+
+      assert_equal 2, @posts.size
+    end
+
+    def test_emit_form_put
+      d = create_driver CONFIG_PUT + %[buffered true]
+      d.run(default_tag: 'test.metrics', shutdown: false) do
+        d.feed({ 'field1' => 50 })
+      end
+
+      assert_equal 0, @posts.size
+      assert_equal 1, @puts.size
+      record = @puts[0]
+
+      assert_equal '50', record[:form]['field1']
+      assert_nil record[:auth]
+
+      d.run(default_tag: 'test.metrics', shutdown: false) do
+        d.feed({ 'field1' => 50 })
+      end
+
+      assert_equal 0, @posts.size
+      assert_equal 2, @puts.size
+    end
+
+    def test_emit_json
+      binary_string = "\xe3\x81\x82"
+      d = create_driver CONFIG_JSON + %[buffered true]
+      d.run(default_tag: 'test.metrics') do
+        d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => binary_string })
+      end
+
+      assert_equal 1, @posts.size
+      record = @posts[0]
+
+      assert_equal 50, record[:json]['field1']
+      assert_equal 20, record[:json]['field2']
+      assert_equal 10, record[:json]['field3']
+      assert_equal 1, record[:json]['otherfield']
+      assert_equal binary_string, record[:json]['binary']
+      assert_nil record[:auth]
+    end
   end
 
   def test_emit_form_put
