@@ -1,3 +1,6 @@
+require 'net/http'
+require 'uri'
+require 'yajl'
 require 'fluent/plugin/output'
 
 class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
@@ -9,9 +12,6 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
 
   def initialize
     super
-    require 'net/http'
-    require 'uri'
-    require 'yajl'
   end
 
   # Endpoint URL ex. http://localhost.local/api/
