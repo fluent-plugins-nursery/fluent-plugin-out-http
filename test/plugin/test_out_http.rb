@@ -4,9 +4,13 @@ require 'uri'
 require 'yajl'
 require 'fluent/test/http_output_test'
 require 'fluent/plugin/out_http'
+require 'fluent/test/driver/output'
+require 'fluent/test/helpers'
 
 
 class HTTPOutputTestBase < Test::Unit::TestCase
+  include Fluent::Test::Helpers
+
   def self.port
     5126
   end
@@ -143,8 +147,8 @@ class HTTPOutputTestBase < Test::Unit::TestCase
     @dummy_server_thread.join
   end
 
-  def create_driver(conf, tag='test.metrics')
-    Fluent::Test::OutputTestDriver.new(Fluent::HTTPOutput, tag).configure(conf)
+  def create_driver(conf)
+    Fluent::Test::Driver::Output.new(Fluent::Plugin::HTTPOutput).configure(conf)
   end
 end
 
@@ -191,8 +195,9 @@ class HTTPOutputTest < HTTPOutputTestBase
 
   def test_emit_form
     d = create_driver CONFIG
-    d.emit({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => "\xe3\x81\x82".force_encoding("ascii-8bit") })
-    d.run
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => "\xe3\x81\x82".force_encoding("ascii-8bit") })
+    end
 
     assert_equal 1, @posts.size
     record = @posts[0]
@@ -204,16 +209,18 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_equal URI.encode_www_form_component("あ").upcase, record[:form]['binary'].upcase
     assert_nil record[:auth]
 
-    d.emit({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1 })
-    d.run
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1 })
+    end
 
     assert_equal 2, @posts.size
   end
 
   def test_emit_form_put
     d = create_driver CONFIG_PUT
-    d.emit({ 'field1' => 50 })
-    d.run
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ 'field1' => 50 })
+    end
 
     assert_equal 0, @posts.size
     assert_equal 1, @puts.size
@@ -222,8 +229,9 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_equal '50', record[:form]['field1']
     assert_nil record[:auth]
 
-    d.emit({ 'field1' => 50 })
-    d.run
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ 'field1' => 50 })
+    end
 
     assert_equal 0, @posts.size
     assert_equal 2, @puts.size
@@ -232,8 +240,9 @@ class HTTPOutputTest < HTTPOutputTestBase
   def test_emit_json
     binary_string = "\xe3\x81\x82"
     d = create_driver CONFIG_JSON
-    d.emit({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => binary_string })
-    d.run
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => binary_string })
+    end
 
     assert_equal 1, @posts.size
     record = @posts[0]
@@ -249,14 +258,17 @@ class HTTPOutputTest < HTTPOutputTestBase
   def test_http_error_is_raised
     d = create_driver CONFIG_HTTP_ERROR
     assert_raise Errno::ECONNREFUSED do
-      d.emit({ 'field1' => 50 })
+      d.run(default_tag: 'test.metrics') do
+        d.feed({ 'field1' => 50 })
+      end
     end
   end
 
   def test_http_error_is_suppressed_with_raise_on_error_false
     d = create_driver CONFIG_HTTP_ERROR_SUPPRESSED
-    d.emit({ 'field1' => 50 })
-    d.run
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ 'field1' => 50 })
+    end
     # drive asserts the next output chain is called;
     # so no exception means our plugin handled the error
 
@@ -268,13 +280,15 @@ class HTTPOutputTest < HTTPOutputTestBase
     record = { :k => 1 }
 
     last_emit = _current_msec
-    d.emit(record)
-    d.run
+    d.run(default_tag: 'test.metrics') do
+      d.feed(record)
+    end
 
     assert_equal 1, @posts.size
 
-    d.emit({})
-    d.run
+    d.run(default_tag: 'test.metrics') do
+      d.feed({})
+    end
     assert last_emit + RATE_LIMIT_MSEC > _current_msec, "Still under rate limiting interval"
     assert_equal 1, @posts.size
 
@@ -282,8 +296,9 @@ class HTTPOutputTest < HTTPOutputTestBase
     sleep (last_emit + RATE_LIMIT_MSEC - _current_msec + wait_msec) * 0.001
 
     assert last_emit + RATE_LIMIT_MSEC < _current_msec, "No longer under rate limiting interval"
-    d.emit(record)
-    d.run
+    d.run(default_tag: 'test.metrics') do
+      d.feed(record)
+    end
     assert_equal 2, @posts.size
   end
 
@@ -294,9 +309,10 @@ class HTTPOutputTest < HTTPOutputTestBase
   def test_auth
     @auth = true # enable authentication of dummy server
 
-    d = create_driver(CONFIG, 'test.metrics')
-    d.emit({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1 })
-    d.run # failed in background, and output warn log
+    d = create_driver(CONFIG)
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1 })
+    end # failed in background, and output warn log
 
     assert_equal 0, @posts.size
     assert_equal 1, @prohibited
@@ -305,9 +321,10 @@ class HTTPOutputTest < HTTPOutputTestBase
       authentication basic
       username alice
       password wrong_password
-    ], 'test.metrics')
-    d.emit({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1 })
-    d.run # failed in background, and output warn log
+    ])
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1 })
+    end # failed in background, and output warn log
 
     assert_equal 0, @posts.size
     assert_equal 2, @prohibited
@@ -316,9 +333,10 @@ class HTTPOutputTest < HTTPOutputTestBase
       authentication basic
       username alice
       password secret!
-    ], 'test.metrics')
-    d.emit({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1 })
-    d.run # failed in background, and output warn log
+    ])
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1 })
+    end # failed in background, and output warn log
 
     assert_equal 1, @posts.size
     assert_equal 2, @prohibited
@@ -374,8 +392,9 @@ class HTTPSOutputTest < HTTPOutputTestBase
     ssl_no_verify true
     ]
     d = create_driver config
-    d.emit({ 'field1' => 50 })
-    d.run
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ 'field1' => 50 })
+    end
 
     assert_equal 1, @posts.size
     record = @posts[0]
