@@ -32,6 +32,12 @@ class Fluent::HTTPOutput < Fluent::Output
   config_param :username, :string, :default => ''
   config_param :password, :string, :default => '', :secret => true
 
+  # proxy
+  config_param :proxy_addr, :string, :default => nil
+  config_param :proxy_port, :string, :default => 8080
+  config_param :proxy_user, :string, :default => nil
+  config_param :proxy_pass, :string, :default => nil
+
   def configure(conf)
     super
 
@@ -125,7 +131,15 @@ class Fluent::HTTPOutput < Fluent::Output
         req.basic_auth(@username, @password)
       end
       @last_request_time = Time.now.to_f
-      res = Net::HTTP.start(uri.host, uri.port, **http_opts(uri)) {|http| http.request(req) }
+
+      if :proxy_addr
+        res = Net::HTTP.start(uri.host, uri.port,
+                              :proxy_addr, :proxy_port, :proxy_user, :proxy_pass,
+                              **http_opts(uri)) {|http| http.request(req) }
+      else
+        res = Net::HTTP.start(uri.host, uri.port, **http_opts(uri)) {|http| http.request(req) }
+      end
+
     rescue => e # rescue all StandardErrors
       # server didn't respond
       $log.warn "Net::HTTP.#{req.method.capitalize} raises exception: #{e.class}, '#{e.message}'"
