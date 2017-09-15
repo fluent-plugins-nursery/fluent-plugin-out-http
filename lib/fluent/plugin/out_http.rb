@@ -32,12 +32,6 @@ class Fluent::HTTPOutput < Fluent::Output
   config_param :username, :string, :default => ''
   config_param :password, :string, :default => '', :secret => true
 
-  # proxy
-  config_param :proxy_addr, :string, :default => nil
-  config_param :proxy_port, :string, :default => 8080
-  config_param :proxy_user, :string, :default => nil
-  config_param :proxy_pass, :string, :default => nil
-
   def configure(conf)
     super
 
@@ -132,9 +126,12 @@ class Fluent::HTTPOutput < Fluent::Output
       end
       @last_request_time = Time.now.to_f
 
-      if :proxy_addr
+      if ENV['HTTPS_PROXY'] || ENV['HTTP_PROXY'] || ENV['http_proxy'] || ENV['https_proxy']
+        proxy = ENV['HTTPS_PROXY'] || ENV['https_proxy'] || ENV['HTTP_PROXY'] || ENV['http_proxy']
+        proxy_uri = URI.parse(proxy)
+
         res = Net::HTTP.start(uri.host, uri.port,
-                              :proxy_addr, :proxy_port, :proxy_user, :proxy_pass,
+                              proxy_uri.host, proxy_uri.port, proxy_uri.user, proxy_uri.password,
                               **http_opts(uri)) {|http| http.request(req) }
       else
         res = Net::HTTP.start(uri.host, uri.port, **http_opts(uri)) {|http| http.request(req) }
