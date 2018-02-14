@@ -383,3 +383,23 @@ class HTTPSOutputTest < HTTPOutputTestBase
     assert_equal '50', record[:form]['field1']
   end
 end
+
+
+class CustomFormatterTest < HTTPOutputTestBase
+  FORMATTER_CONF = %[
+    endpoint_url http://127.0.0.1:#{port}/api/
+    serializer json
+    format test_formatter
+  ]
+
+  def test_custom_formatter
+    d = create_driver FORMATTER_CONF
+    payload = {"field" => 1}
+    d.emit(payload)
+    d.run
+
+    record = @posts[0]
+    assert_equal record[:json]["wrapped"], true
+    assert_equal record[:json]["record"], payload
+  end
+end
