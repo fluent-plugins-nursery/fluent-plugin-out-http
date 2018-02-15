@@ -66,6 +66,7 @@ class Fluent::HTTPOutput < Fluent::Output
 
     @last_request_time = nil
 
+    @formatter = nil
     unless @format.empty?
       @formatter = Fluent::Plugin.new_formatter(@format)
       @formatter.configure(conf)

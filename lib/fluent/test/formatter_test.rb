@@ -11,8 +11,8 @@ module Fluent
 
       def format(tag, time, record)
         output = {
-          "wrapped": true,
-          "record": record
+          "wrapped" => true,
+          "record" => record
         }
         output
       end
