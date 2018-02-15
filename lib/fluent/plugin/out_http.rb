@@ -32,6 +32,9 @@ class Fluent::HTTPOutput < Fluent::Output
   config_param :username, :string, :default => ''
   config_param :password, :string, :default => '', :secret => true
 
+  # Formatter support so you can format your request body before sending
+  config_param :format, :string, :default => ''
+
   def configure(conf)
     super
 
@@ -62,6 +65,12 @@ class Fluent::HTTPOutput < Fluent::Output
             end
 
     @last_request_time = nil
+
+    @formatter = nil
+    unless @format.empty?
+      @formatter = Fluent::Plugin.new_formatter(@format)
+      @formatter.configure(conf)
+    end
   end
 
   def start
@@ -143,6 +152,9 @@ class Fluent::HTTPOutput < Fluent::Output
   end # end send_request
 
   def handle_record(tag, time, record)
+    if @formatter
+      record = @formatter.format(tag, time, record)
+    end
     req, uri = create_request(tag, time, record)
     send_request(req, uri)
   end
