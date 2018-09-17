@@ -58,6 +58,9 @@ class HTTPOutputTestBase < Test::Unit::TestCase
           record = {:auth => nil}
           if req.content_type == 'application/json'
             record[:json] = Yajl.load(req.body)
+          elsif req.content_type == 'text/plain'
+            puts req
+            record[:data] = req.body
           else
             record[:form] = Hash[*(req.body.split('&').map{|kv|kv.split('=')}.flatten)]
           end
@@ -158,6 +161,11 @@ class HTTPOutputTest < HTTPOutputTestBase
     serializer json
   ]
 
+  CONFIG_TEXT = %[
+    endpoint_url http://127.0.0.1:#{port}/api/
+    serializer text
+  ]
+
   CONFIG_PUT = %[
     endpoint_url http://127.0.0.1:#{port}/api/
     http_method put
@@ -243,6 +251,17 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_equal 10, record[:json]['field3']
     assert_equal 1, record[:json]['otherfield']
     assert_equal binary_string, record[:json]['binary']
+    assert_nil record[:auth]
+  end  
+  
+  def test_emit_text
+    binary_string = "\xe3\x81\x82"
+    d = create_driver CONFIG_TEXT
+    d.emit({ "message" => "hello" })
+    d.run
+    assert_equal 1, @posts.size
+    record = @posts[0]
+    assert_equal 'hello', record[:data]
     assert_nil record[:auth]
   end
 

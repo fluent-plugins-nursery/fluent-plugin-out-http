@@ -41,7 +41,7 @@ class Fluent::HTTPOutput < Fluent::Output
                          OpenSSL::SSL::VERIFY_PEER
                        end
 
-    serializers = [:json, :form]
+    serializers = [:json, :form, :text]
     @serializer = if serializers.include? @serializer.intern
                     @serializer.intern
                   else
@@ -79,6 +79,8 @@ class Fluent::HTTPOutput < Fluent::Output
   def set_body(req, tag, time, record)
     if @serializer == :json
       set_json_body(req, record)
+    elsif @serializer == :text
+      set_text_body(req, record)
     else
       req.set_form_data(record)
     end
@@ -92,6 +94,11 @@ class Fluent::HTTPOutput < Fluent::Output
   def set_json_body(req, data)
     req.body = Yajl.dump(data)
     req['Content-Type'] = 'application/json'
+  end
+
+  def set_text_body(req, data)
+    req.body = data["message"]
+    req['Content-Type'] = 'text/plain'
   end
 
   def create_request(tag, time, record)
