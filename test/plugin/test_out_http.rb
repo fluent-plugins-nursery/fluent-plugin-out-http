@@ -385,12 +385,42 @@ class HTTPSOutputTest < HTTPOutputTestBase
     http_opts = d.instance.http_opts(test_uri)
     assert_equal true, http_opts[:use_ssl]
     assert_equal OpenSSL::SSL::VERIFY_NONE, http_opts[:verify_mode]
+
+    cacert_file_config = %[
+    endpoint_url https://127.0.0.1:#{self.class.port}/api/
+    ssl_no_verify true
+    cacert_file /tmp/ssl.cert
+    ]
+    d = create_driver cacert_file_config
+    FileUtils::touch '/tmp/ssl.cert'
+    http_opts = d.instance.http_opts(test_uri)
+    assert_equal true, http_opts[:use_ssl]
+    assert_equal OpenSSL::SSL::VERIFY_NONE, http_opts[:verify_mode]
+    assert_equal true, File.file?('/tmp/ssl.cert')
+    puts http_opts
+    assert_equal File.join('/tmp/ssl.cert'), http_opts[:ca_file]
   end
 
   def test_emit_form_ssl
     config = %[
     endpoint_url https://127.0.0.1:#{self.class.port}/api/
     ssl_no_verify true
+    ]
+    d = create_driver config
+    d.emit({ 'field1' => 50 })
+    d.run
+
+    assert_equal 1, @posts.size
+    record = @posts[0]
+
+    assert_equal '50', record[:form]['field1']
+  end
+
+  def test_emit_form_ssl_ca
+    config = %[
+    endpoint_url https://127.0.0.1:#{self.class.port}/api/
+    ssl_no_verify true
+    cacert_file /tmp/ssl.cert
     ]
     d = create_driver config
     d.emit({ 'field1' => 50 })
