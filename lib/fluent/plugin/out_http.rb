@@ -1,11 +1,17 @@
-class Fluent::HTTPOutput < Fluent::Output
+require 'net/http'
+require 'uri'
+require 'yajl'
+require 'fluent/plugin/output'
+
+class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   Fluent::Plugin.register_output('http', self)
+
+  helpers :compat_parameters
+
+  DEFAULT_BUFFER_TYPE = "memory"
 
   def initialize
     super
-    require 'net/http'
-    require 'uri'
-    require 'yajl'
   end
 
   # Endpoint URL ex. http://localhost.local/api/
@@ -31,8 +37,16 @@ class Fluent::HTTPOutput < Fluent::Output
   config_param :authentication, :string, :default => nil
   config_param :username, :string, :default => ''
   config_param :password, :string, :default => '', :secret => true
+  # Switch non-buffered/buffered plugin
+  config_param :buffered, :bool, :default => false
+
+  config_section :buffer do
+    config_set_default :@type, DEFAULT_BUFFER_TYPE
+    config_set_default :chunk_keys, ['tag']
+  end
 
   def configure(conf)
+    compat_parameters_convert(conf, :buffer)
     super
 
     @ssl_verify_mode = if @ssl_no_verify
@@ -62,6 +76,7 @@ class Fluent::HTTPOutput < Fluent::Output
             end
 
     @last_request_time = nil
+    raise Fluent::ConfigError, "'tag' in chunk_keys is required." if !@chunk_key_tag && @buffered
   end
 
   def start
@@ -114,7 +129,7 @@ class Fluent::HTTPOutput < Fluent::Output
   def send_request(req, uri)
     is_rate_limited = (@rate_limit_msec != 0 and not @last_request_time.nil?)
     if is_rate_limited and ((Time.now.to_f - @last_request_time) * 1000.0 < @rate_limit_msec)
-      $log.info('Dropped request due to rate limiting')
+      log.info('Dropped request due to rate limiting')
       return
     end
 
@@ -128,7 +143,7 @@ class Fluent::HTTPOutput < Fluent::Output
       res = Net::HTTP.start(uri.host, uri.port, **http_opts(uri)) {|http| http.request(req) }
     rescue => e # rescue all StandardErrors
       # server didn't respond
-      $log.warn "Net::HTTP.#{req.method.capitalize} raises exception: #{e.class}, '#{e.message}'"
+      log.warn "Net::HTTP.#{req.method.capitalize} raises exception: #{e.class}, '#{e.message}'"
       raise e if @raise_on_error
     else
        unless res and res.is_a?(Net::HTTPSuccess)
@@ -137,7 +152,7 @@ class Fluent::HTTPOutput < Fluent::Output
                         else
                            "res=nil"
                         end
-          $log.warn "failed to #{req.method} #{uri} (#{res_summary})"
+          log.warn "failed to #{req.method} #{uri} (#{res_summary})"
        end #end unless
     end # end begin
   end # end send_request
@@ -147,10 +162,32 @@ class Fluent::HTTPOutput < Fluent::Output
     send_request(req, uri)
   end
 
-  def emit(tag, es, chain)
+  def prefer_buffered_processing
+    @buffered
+  end
+
+  def format(tag, time, record)
+    [time, record].to_msgpack
+  end
+
+  def formatted_to_msgpack_binary?
+    true
+  end
+
+  def multi_workers_ready?
+    true
+  end
+
+  def process(tag, es)
     es.each do |time, record|
       handle_record(tag, time, record)
     end
-    chain.next
+  end
+
+  def write(chunk)
+    tag = chunk.metadata.tag
+    chunk.msgpack_each do |time, record|
+      handle_record(tag, time, record)
+    end
   end
 end
