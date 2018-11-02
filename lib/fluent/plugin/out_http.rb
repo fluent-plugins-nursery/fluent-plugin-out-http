@@ -21,10 +21,10 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   config_param :ssl_no_verify, :bool, :default => false
 
   # HTTP method
-  config_param :http_method, :string, :default => :post
+  config_param :http_method, :enum, list: [:get, :put, :post, :delete], :default => :post
 
   # form | json
-  config_param :serializer, :string, :default => :form
+  config_param :serializer, :enum, list: [:json, :form], :default => :form
 
   # Simple rate limiting: ignore any records within `rate_limit_msec`
   # since the last one.
@@ -33,8 +33,8 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   # Raise errors that were rescued during HTTP requests?
   config_param :raise_on_error, :bool, :default => true
 
-  # nil | 'none' | 'basic'
-  config_param :authentication, :string, :default => nil
+  # 'none' | 'basic'
+  config_param :authentication, :enum, list: [:none, :basic],  :default => :none
   config_param :username, :string, :default => ''
   config_param :password, :string, :default => '', :secret => true
   # Switch non-buffered/buffered plugin
@@ -54,26 +54,6 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
                        else
                          OpenSSL::SSL::VERIFY_PEER
                        end
-
-    serializers = [:json, :form]
-    @serializer = if serializers.include? @serializer.intern
-                    @serializer.intern
-                  else
-                    :form
-                  end
-
-    http_methods = [:get, :put, :post, :delete]
-    @http_method = if http_methods.include? @http_method.intern
-                    @http_method.intern
-                  else
-                    :post
-                  end
-
-    @auth = case @authentication
-            when 'basic' then :basic
-            else
-              :none
-            end
 
     @last_request_time = nil
     raise Fluent::ConfigError, "'tag' in chunk_keys is required." if !@chunk_key_tag && @buffered
@@ -136,7 +116,7 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
     res = nil
 
     begin
-      if @auth and @auth == :basic
+      if @authentication == :basic
         req.basic_auth(@username, @password)
       end
       @last_request_time = Time.now.to_f
