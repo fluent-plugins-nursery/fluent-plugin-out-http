@@ -42,7 +42,7 @@ class HTTPOutputTestBase < Test::Unit::TestCase
       srv = WEBrick::HTTPServer.new(self.class.server_config)
       begin
         allowed_methods = %w(POST PUT)
-        srv.mount_proc('/api/') { |req,res|
+        srv.mount_proc('/api') { |req,res|
           @requests += 1
           unless allowed_methods.include? req.request_method
             res.status = 405
@@ -69,6 +69,10 @@ class HTTPOutputTestBase < Test::Unit::TestCase
           instance_variable_get("@#{req.request_method.downcase}s").push(record)
 
           res.status = 200
+        }
+        srv.mount_proc('/modified-api') { |req,res|
+          res.status = 303
+          res.body = 'See other'
         }
         srv.mount_proc('/') { |req,res|
           res.status = 200
@@ -117,6 +121,8 @@ class HTTPOutputTestBase < Test::Unit::TestCase
     assert_equal '1', @posts[0][:form]['number']
     assert_equal 'gauge', @posts[0][:form]['mode']
     assert_nil @posts[0][:auth]
+
+    assert_equal '303', client.request_get('/modified-api').code
 
     @auth = true
 
@@ -254,6 +260,21 @@ class HTTPOutputTest < HTTPOutputTestBase
       end
 
       assert_equal 2, @posts.size
+    end
+
+    def test_emit_form_with_placeholders
+      d = create_driver(Fluent::Config::Element.new(
+                          'ROOT', '' ,
+                          {"endpoint_url" => "${endpoint}",
+                          "buffered" => true},
+                          [Fluent::Config::Element.new('buffer', 'tag, endpoint', {"@type" => "memory"} ,[])]))
+
+      d.run(default_tag: 'test.metrics', shutdown: false) do
+        d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => "\xe3\x81\x82".force_encoding("ascii-8bit"), 'endpoint' => "http://127.0.0.1:#{self.class.port}/modified-api/" })
+      end
+
+      assert_equal 0, @posts.size # post into other URI
+      assert_equal "http://127.0.0.1:#{self.class.port}/modified-api/", d.instance.endpoint_url
     end
 
     def test_emit_form_put
