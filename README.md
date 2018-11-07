@@ -17,6 +17,7 @@ A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint.
       username        alice  # default: ''
       password        bobpop # default: '', secret: true
       buffered        true   # default: false. Switch non-buffered/buffered mode
+      token           tokent # default: ''
     </match>
 
 ## Usage notes
