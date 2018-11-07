@@ -47,6 +47,22 @@ class HTTPOutputTestBase < Test::Unit::TestCase
           end
           if @auth and req.header['authorization'][0] == 'Basic YWxpY2U6c2VjcmV0IQ==' # pattern of user='alice' passwd='secret!'
             # ok, authorized
+          # pattern of bear #{Base64.encode64('secret token!')}
+          elsif @auth and req.header['authorization'][0] == 'bearer c2VjcmV0IHRva2VuIQ=='
+          # pattern of jwt
+          # header: {
+          #  "alg": "HS256",
+          #  "typ": "JWT"
+          # }
+          # payload: {
+          #   "iss": "Hoge Publisher",
+          #   "sub": "Hoge User"
+          # }
+          # signature:
+          #   HS256(base64UrlEncode(header)  + "." +
+          #         base64UrlEncode(payload) + "." +
+          #         secret)
+          elsif @auth and req.header['authorization'][0] == 'jwt eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJIb2dlIFB1Ymxpc2hlciIsInN1YiI6IkhvZ2UgVXNlciJ9.V2NL7YgCWNt5d3vTXFrcRLpRImO2cU2JZ4mQglqw3rE'
           elsif @auth
             res.status = 403
             @prohibited += 1
@@ -321,6 +337,27 @@ class HTTPOutputTest < HTTPOutputTestBase
     d.run # failed in background, and output warn log
 
     assert_equal 1, @posts.size
+    assert_equal 2, @prohibited
+
+    require 'base64'
+    d = create_driver(CONFIG + %[
+      authentication bearer
+      token #{Base64.encode64('secret token!')}
+    ], 'test.metrics')
+    d.emit({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1 })
+    d.run # failed in background, and output warn log
+
+    assert_equal 2, @posts.size
+    assert_equal 2, @prohibited
+
+    d = create_driver(CONFIG + %[
+      authentication jwt
+      token eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJIb2dlIFB1Ymxpc2hlciIsInN1YiI6IkhvZ2UgVXNlciJ9.V2NL7YgCWNt5d3vTXFrcRLpRImO2cU2JZ4mQglqw3rE
+    ], 'test.metrics')
+    d.emit({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1 })
+    d.run # failed in background, and output warn log
+
+    assert_equal 3, @posts.size
     assert_equal 2, @prohibited
   end
 
