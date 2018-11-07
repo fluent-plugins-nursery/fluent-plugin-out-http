@@ -33,10 +33,11 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   # Raise errors that were rescued during HTTP requests?
   config_param :raise_on_error, :bool, :default => true
 
-  # 'none' | 'basic'
-  config_param :authentication, :enum, list: [:none, :basic],  :default => :none
+  # 'none' | 'basic' | 'jwt' | 'bearer'
+  config_param :authentication, :enum, list: [:none, :basic, :jwt, :bearer],  :default => :none
   config_param :username, :string, :default => ''
   config_param :password, :string, :default => '', :secret => true
+  config_param :token, :string, :default => ''
   # Switch non-buffered/buffered plugin
   config_param :buffered, :bool, :default => false
 
@@ -118,6 +119,10 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
     begin
       if @authentication == :basic
         req.basic_auth(@username, @password)
+      elsif @authentication == :bearer
+        req['authorization'] = "bearer #{@token}"
+      elsif @authentication == :jwt
+        req['authorization'] = "jwt #{@token}"
       end
       @last_request_time = Time.now.to_f
       res = Net::HTTP.start(uri.host, uri.port, **http_opts(uri)) {|http| http.request(req) }
