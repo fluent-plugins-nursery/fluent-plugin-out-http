@@ -27,6 +27,9 @@ class Fluent::HTTPOutput < Fluent::Output
   # Raise errors that were rescued during HTTP requests?
   config_param :raise_on_error, :bool, :default => true
 
+  # ca file to use for https request
+  config_param :cacert_file, :string, :default => ''
+
   # nil | 'none' | 'basic' | 'jwt' | 'bearer'
   config_param :authentication, :string, :default => nil
   config_param :username, :string, :default => ''
@@ -42,7 +45,9 @@ class Fluent::HTTPOutput < Fluent::Output
                          OpenSSL::SSL::VERIFY_PEER
                        end
 
-    serializers = [:json, :form]
+    @ca_file = @cacert_file
+
+    serializers = [:json, :form, :text]
     @serializer = if serializers.include? @serializer.intern
                     @serializer.intern
                   else
@@ -74,7 +79,7 @@ class Fluent::HTTPOutput < Fluent::Output
   def shutdown
     super
   end
-
+  
   def format_url(tag, time, record)
     @endpoint_url
   end
@@ -82,6 +87,8 @@ class Fluent::HTTPOutput < Fluent::Output
   def set_body(req, tag, time, record)
     if @serializer == :json
       set_json_body(req, record)
+    elsif @serializer == :text
+      set_text_body(req, record)
     else
       req.set_form_data(record)
     end
@@ -95,6 +102,11 @@ class Fluent::HTTPOutput < Fluent::Output
   def set_json_body(req, data)
     req.body = Yajl.dump(data)
     req['Content-Type'] = 'application/json'
+  end
+
+  def set_text_body(req, data)
+    req.body = data["message"]
+    req['Content-Type'] = 'text/plain'
   end
 
   def create_request(tag, time, record)
@@ -111,6 +123,7 @@ class Fluent::HTTPOutput < Fluent::Output
         :use_ssl => uri.scheme == 'https'
       }
       opts[:verify_mode] = @ssl_verify_mode if opts[:use_ssl]
+      opts[:ca_file] = File.join(@ca_file) if File.file?(@ca_file)
       opts
   end
 

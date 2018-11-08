@@ -92,6 +92,9 @@ class HTTPOutputTestBase < Test::Unit::TestCase
           record = {:auth => nil}
           if req.content_type == 'application/json'
             record[:json] = Yajl.load(req.body)
+          elsif req.content_type == 'text/plain'
+            puts req
+            record[:data] = req.body
           else
             record[:form] = Hash[*(req.body.split('&').map{|kv|kv.split('=')}.flatten)]
           end
@@ -192,6 +195,11 @@ class HTTPOutputTest < HTTPOutputTestBase
     serializer json
   ]
 
+  CONFIG_TEXT = %[
+    endpoint_url http://127.0.0.1:#{port}/api/
+    serializer text
+  ]
+
   CONFIG_PUT = %[
     endpoint_url http://127.0.0.1:#{port}/api/
     http_method put
@@ -277,6 +285,17 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_equal 10, record[:json]['field3']
     assert_equal 1, record[:json]['otherfield']
     assert_equal binary_string, record[:json]['binary']
+    assert_nil record[:auth]
+  end  
+  
+  def test_emit_text
+    binary_string = "\xe3\x81\x82"
+    d = create_driver CONFIG_TEXT
+    d.emit({ "message" => "hello" })
+    d.run
+    assert_equal 1, @posts.size
+    record = @posts[0]
+    assert_equal 'hello', record[:data]
     assert_nil record[:auth]
   end
 
@@ -422,12 +441,42 @@ class HTTPSOutputTest < HTTPOutputTestBase
     http_opts = d.instance.http_opts(test_uri)
     assert_equal true, http_opts[:use_ssl]
     assert_equal OpenSSL::SSL::VERIFY_NONE, http_opts[:verify_mode]
+
+    cacert_file_config = %[
+    endpoint_url https://127.0.0.1:#{self.class.port}/api/
+    ssl_no_verify true
+    cacert_file /tmp/ssl.cert
+    ]
+    d = create_driver cacert_file_config
+    FileUtils::touch '/tmp/ssl.cert'
+    http_opts = d.instance.http_opts(test_uri)
+    assert_equal true, http_opts[:use_ssl]
+    assert_equal OpenSSL::SSL::VERIFY_NONE, http_opts[:verify_mode]
+    assert_equal true, File.file?('/tmp/ssl.cert')
+    puts http_opts
+    assert_equal File.join('/tmp/ssl.cert'), http_opts[:ca_file]
   end
 
   def test_emit_form_ssl
     config = %[
     endpoint_url https://127.0.0.1:#{self.class.port}/api/
     ssl_no_verify true
+    ]
+    d = create_driver config
+    d.emit({ 'field1' => 50 })
+    d.run
+
+    assert_equal 1, @posts.size
+    record = @posts[0]
+
+    assert_equal '50', record[:form]['field1']
+  end
+
+  def test_emit_form_ssl_ca
+    config = %[
+    endpoint_url https://127.0.0.1:#{self.class.port}/api/
+    ssl_no_verify true
+    cacert_file /tmp/ssl.cert
     ]
     d = create_driver config
     d.emit({ 'field1' => 50 })
