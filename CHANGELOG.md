@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.1
+### Added
+* Added plain text transport capability
+* Added specify cacert file for ssl verify
+
+## 0.3.0
+### Added
+* Support for jwt token authentication:
+
 ## 0.2.0
 ### Added
 * SSL is now supported if `endpoint_url` uses the `https` scheme (uses ruby-2.1 syntax internally)
