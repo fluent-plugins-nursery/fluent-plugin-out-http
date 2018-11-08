@@ -24,7 +24,7 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   config_param :http_method, :enum, list: [:get, :put, :post, :delete], :default => :post
 
   # form | json
-  config_param :serializer, :enum, list: [:json, :form], :default => :form
+  config_param :serializer, :enum, list: [:json, :form, :text], :default => :form
 
   # Simple rate limiting: ignore any records within `rate_limit_msec`
   # since the last one.
@@ -32,6 +32,9 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
 
   # Raise errors that were rescued during HTTP requests?
   config_param :raise_on_error, :bool, :default => true
+
+  # ca file to use for https request
+  config_param :cacert_file, :string, :default => ''
 
   # 'none' | 'basic' | 'jwt' | 'bearer'
   config_param :authentication, :enum, list: [:none, :basic, :jwt, :bearer],  :default => :none
@@ -56,6 +59,7 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
                          OpenSSL::SSL::VERIFY_PEER
                        end
 
+    @ca_file = @cacert_file
     @last_request_time = nil
     raise Fluent::ConfigError, "'tag' in chunk_keys is required." if !@chunk_key_tag && @buffered
   end
@@ -75,6 +79,8 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   def set_body(req, tag, time, record)
     if @serializer == :json
       set_json_body(req, record)
+    elsif @serializer == :text
+      set_text_body(req, record)
     else
       req.set_form_data(record)
     end
@@ -88,6 +94,11 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   def set_json_body(req, data)
     req.body = Yajl.dump(data)
     req['Content-Type'] = 'application/json'
+  end
+
+  def set_text_body(req, data)
+    req.body = data["message"]
+    req['Content-Type'] = 'text/plain'
   end
 
   def create_request(tag, time, record)
@@ -104,6 +115,7 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
         :use_ssl => uri.scheme == 'https'
       }
       opts[:verify_mode] = @ssl_verify_mode if opts[:use_ssl]
+      opts[:ca_file] = File.join(@ca_file) if File.file?(@ca_file)
       opts
   end
 
