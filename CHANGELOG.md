@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.1
+* Added plain text transport capability
+* Added specify cacert file for ssl verify
+
+## 1.1.0
+* Support for jwt token authentication
+
+## 1.0.1
+* Added endpoint_url placeholder support
+
+## 1.0.0
+* Use Fluentd v1 API
+
 ## 0.2.0
 ### Added
 * SSL is now supported if `endpoint_url` uses the `https` scheme (uses ruby-2.1 syntax internally)
