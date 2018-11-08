@@ -30,10 +30,11 @@ class Fluent::HTTPOutput < Fluent::Output
   # ca file to use for https request
   config_param :cacert_file, :string, :default => ''
 
-  # nil | 'none' | 'basic'
+  # nil | 'none' | 'basic' | 'jwt' | 'bearer'
   config_param :authentication, :string, :default => nil
   config_param :username, :string, :default => ''
   config_param :password, :string, :default => '', :secret => true
+  config_param :token, :string, :default => ''
 
   def configure(conf)
     super
@@ -62,6 +63,8 @@ class Fluent::HTTPOutput < Fluent::Output
 
     @auth = case @authentication
             when 'basic' then :basic
+            when 'bearer' then :bearer
+            when 'jwt' then :jwt
             else
               :none
             end
@@ -136,6 +139,10 @@ class Fluent::HTTPOutput < Fluent::Output
     begin
       if @auth and @auth == :basic
         req.basic_auth(@username, @password)
+      elsif @auth and @auth == :bearer
+        req['authorization'] = "bearer #{@token}"
+      elsif @auth and @auth == :jwt
+        req['authorization'] = "jwt #{@token}"
       end
       @last_request_time = Time.now.to_f
       res = Net::HTTP.start(uri.host, uri.port, **http_opts(uri)) {|http| http.request(req) }
@@ -167,3 +174,4 @@ class Fluent::HTTPOutput < Fluent::Output
     chain.next
   end
 end
+
