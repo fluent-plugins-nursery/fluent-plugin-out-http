@@ -119,6 +119,10 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
       opts
   end
 
+  def proxies
+    ENV['HTTPS_PROXY'] || ENV['HTTP_PROXY'] || ENV['http_proxy'] || ENV['https_proxy']
+  end
+
   def send_request(req, uri)
     is_rate_limited = (@rate_limit_msec != 0 and not @last_request_time.nil?)
     if is_rate_limited and ((Time.now.to_f - @last_request_time) * 1000.0 < @rate_limit_msec)
@@ -137,7 +141,17 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
         req['authorization'] = "jwt #{@token}"
       end
       @last_request_time = Time.now.to_f
-      res = Net::HTTP.start(uri.host, uri.port, **http_opts(uri)) {|http| http.request(req) }
+
+      if proxy = proxies
+        proxy_uri = URI.parse(proxy)
+
+        res = Net::HTTP.start(uri.host, uri.port,
+                              proxy_uri.host, proxy_uri.port, proxy_uri.user, proxy_uri.password,
+                              **http_opts(uri)) {|http| http.request(req) }
+      else
+        res = Net::HTTP.start(uri.host, uri.port, **http_opts(uri)) {|http| http.request(req) }
+      end
+
     rescue => e # rescue all StandardErrors
       # server didn't respond
       log.warn "Net::HTTP.#{req.method.capitalize} raises exception: #{e.class}, '#{e.message}'"
