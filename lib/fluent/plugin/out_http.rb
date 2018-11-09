@@ -111,6 +111,10 @@ class Fluent::HTTPOutput < Fluent::Output
       opts
   end
 
+  def proxies
+    ENV['HTTPS_PROXY'] || ENV['HTTP_PROXY'] || ENV['http_proxy'] || ENV['https_proxy']
+  end
+
   def send_request(req, uri)
     is_rate_limited = (@rate_limit_msec != 0 and not @last_request_time.nil?)
     if is_rate_limited and ((Time.now.to_f - @last_request_time) * 1000.0 < @rate_limit_msec)
@@ -126,8 +130,7 @@ class Fluent::HTTPOutput < Fluent::Output
       end
       @last_request_time = Time.now.to_f
 
-      if ENV['HTTPS_PROXY'] || ENV['HTTP_PROXY'] || ENV['http_proxy'] || ENV['https_proxy']
-        proxy = ENV['HTTPS_PROXY'] || ENV['https_proxy'] || ENV['HTTP_PROXY'] || ENV['http_proxy']
+      if proxy = proxies
         proxy_uri = URI.parse(proxy)
 
         res = Net::HTTP.start(uri.host, uri.port,
