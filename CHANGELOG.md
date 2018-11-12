@@ -1,5 +1,8 @@
 # Changelog
 
+### 1.1.2
+* Added custom headers feature
+
 ## 1.1.1
 * Added plain text transport capability
 * Added specify cacert file for ssl verify
