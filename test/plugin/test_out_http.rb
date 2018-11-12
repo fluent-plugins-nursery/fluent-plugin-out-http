@@ -56,6 +56,7 @@ class HTTPOutputTestBase < Test::Unit::TestCase
     @prohibited = 0
     @requests = 0
     @auth = false
+    @headers = {}
     @dummy_server_thread = Thread.new do
       srv = WEBrick::HTTPServer.new(self.class.server_config)
       begin
@@ -66,6 +67,9 @@ class HTTPOutputTestBase < Test::Unit::TestCase
             res.status = 405
             res.body = 'request method mismatch'
             next
+          end
+          req.each do |key, value|
+            @headers[key] = value
           end
           if @auth and req.header['authorization'][0] == 'Basic YWxpY2U6c2VjcmV0IQ==' # pattern of user='alice' passwd='secret!'
             # ok, authorized
@@ -262,6 +266,34 @@ class HTTPOutputTest < HTTPOutputTestBase
     d.run(default_tag: 'test.metrics') do
       d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => "\xe3\x81\x82".force_encoding("ascii-8bit") })
     end
+
+    assert_equal 1, @posts.size
+    record = @posts[0]
+
+    assert_equal '50', record[:form]['field1']
+    assert_equal '20', record[:form]['field2']
+    assert_equal '10', record[:form]['field3']
+    assert_equal '1', record[:form]['otherfield']
+    assert_equal URI.encode_www_form_component("あ").upcase, record[:form]['binary'].upcase
+    assert_nil record[:auth]
+
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1 })
+    end
+
+    assert_equal 2, @posts.size
+  end
+
+  def test_emit_form_with_custom_headers
+    d = create_driver CONFIG + %[custom_headers {"key":"custom","token":"arbitrary"}]
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => "\xe3\x81\x82".force_encoding("ascii-8bit") })
+    end
+
+    assert_true @headers.has_key?("key")
+    assert_equal "custom", @headers["key"]
+    assert_true @headers.has_key?("token")
+    assert_equal "arbitrary", @headers["token"]
 
     assert_equal 1, @posts.size
     record = @posts[0]
