@@ -36,6 +36,9 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   # ca file to use for https request
   config_param :cacert_file, :string, :default => ''
 
+  # custom headers
+  config_param :custom_headers, :hash, :default => nil
+
   # 'none' | 'basic' | 'jwt' | 'bearer'
   config_param :authentication, :enum, list: [:none, :basic, :jwt, :bearer],  :default => :none
   config_param :username, :string, :default => ''
@@ -88,7 +91,14 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   end
 
   def set_header(req, tag, time, record)
-    req
+    if @custom_headers
+      @custom_headers.each do |k,v|
+        req[k] = v
+      end
+      req
+    else
+      req
+    end
   end
 
   def set_json_body(req, data)
