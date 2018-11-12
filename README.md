@@ -19,6 +19,7 @@ A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint.
       buffered        true   # default: false. Switch non-buffered/buffered mode
       cacert_file     /etc/ssl/endpoint1.cert # default: ''
       token           tokent # default: ''
+      custom_headers  {"token":"arbitrary"} # default: nil
     </match>
 
 ## Usage notes
