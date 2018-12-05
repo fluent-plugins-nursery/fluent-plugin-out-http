@@ -204,6 +204,10 @@ class HTTPOutputTest < HTTPOutputTestBase
     endpoint_url http://127.0.0.1:#{port}/api/
   ]
 
+  CONFIG_QUERY_PARAM = %[
+    endpoint_url http://127.0.0.1:#{port}/api?foo=bar&baz=qux
+  ]
+
   CONFIG_JSON = %[
     endpoint_url http://127.0.0.1:#{port}/api/
     serializer json
@@ -263,6 +267,29 @@ class HTTPOutputTest < HTTPOutputTestBase
 
   def test_emit_form
     d = create_driver CONFIG
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => "\xe3\x81\x82".force_encoding("ascii-8bit") })
+    end
+
+    assert_equal 1, @posts.size
+    record = @posts[0]
+
+    assert_equal '50', record[:form]['field1']
+    assert_equal '20', record[:form]['field2']
+    assert_equal '10', record[:form]['field3']
+    assert_equal '1', record[:form]['otherfield']
+    assert_equal URI.encode_www_form_component("あ").upcase, record[:form]['binary'].upcase
+    assert_nil record[:auth]
+
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1 })
+    end
+
+    assert_equal 2, @posts.size
+  end
+
+  def test_emit_form_with_query_params
+    d = create_driver CONFIG_QUERY_PARAM
     d.run(default_tag: 'test.metrics') do
       d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => "\xe3\x81\x82".force_encoding("ascii-8bit") })
     end
