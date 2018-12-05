@@ -1,5 +1,8 @@
 # Changelog
 
+### 1.1.3
+* Send query_string to endpoint_url
+
 ### 1.1.2
 * Added custom headers feature
 
