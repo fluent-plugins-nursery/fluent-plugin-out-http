@@ -7,7 +7,7 @@ A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint.
 ## Configuration options
 
     <match *>
-      type http
+      @type http
       endpoint_url    http://localhost.local/api/
       http_method     put    # default: post
       serializer      json   # default: form
