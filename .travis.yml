@@ -15,6 +15,9 @@ dist: trusty
 gemfile:
   - Gemfile
 
+before_install:
+  - gem update --system=2.7.8
+
 script: bundle exec rake test
 
 matrix:
