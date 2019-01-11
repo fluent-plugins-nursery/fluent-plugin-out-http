@@ -6,6 +6,7 @@ require 'fluent/test/http_output_test'
 require 'fluent/plugin/out_http'
 require 'fluent/test/driver/output'
 require 'fluent/test/helpers'
+require_relative "./script/plugin/formatter_test"
 
 module OS
   # ref. http://stackoverflow.com/questions/170956/how-can-i-find-which-operating-system-my-ruby-program-is-running-on
@@ -579,6 +580,46 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_equal 2, @prohibited
   end
 
+  class CustomFormatterTest < self
+    def test_new_config
+      config = Fluent::Config::Element.new(
+        'ROOT', '',
+        {"@type" => "http",
+         "endpoint_url" => "http://127.0.0.1:#{self.class.port}/api/",
+         "serializer" => "json"}, [
+          Fluent::Config::Element.new('format', '', {
+                                        "@type" => "test"
+                                      }, [])
+        ])
+      d = create_driver config
+      payload = {"field" => 1}
+      d.run(default_tag: 'test.metrics') do
+        d.feed(payload)
+      end
+
+      record = @posts[0]
+      expected = {"wrapped" => true, "record" => payload}
+      assert_equal expected, record[:json]
+    end
+
+    def test_legacy_config
+      config = %[
+        endpoint_url http://127.0.0.1:#{self.class.port}/api/
+        serializer json
+        format test
+      ]
+
+      d = create_driver config
+      payload = {"field" => 1}
+      d.run(default_tag: 'test.metrics') do
+        d.feed(payload)
+      end
+
+      record = @posts[0]
+      expected = {"wrapped" => true, "record" => payload}
+      assert_equal expected, record[:json]
+    end
+  end
 end
 
 class HTTPSOutputTest < HTTPOutputTestBase
