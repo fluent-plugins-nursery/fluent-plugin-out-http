@@ -1,5 +1,9 @@
 # Changelog
 
+### 1.1.4
+* Add custom formatter feature
+* Tweak Travis CI tasks
+
 ### 1.1.3
 * Send query_string to endpoint_url
 
