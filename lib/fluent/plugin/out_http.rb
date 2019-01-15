@@ -24,8 +24,8 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   # HTTP method
   config_param :http_method, :enum, list: [:get, :put, :post, :delete], :default => :post
 
-  # form | json
-  config_param :serializer, :enum, list: [:json, :form, :text], :default => :form
+  # form | json | text | raw
+  config_param :serializer, :enum, list: [:json, :form, :text, :raw], :default => :form
 
   # Simple rate limiting: ignore any records within `rate_limit_msec`
   # since the last one.
@@ -93,6 +93,8 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
       set_json_body(req, record)
     elsif @serializer == :text
       set_text_body(req, record)
+    elsif @serializer == :raw
+      set_raw_body(req, record)
     else
       req.set_form_data(record)
     end
@@ -118,6 +120,10 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   def set_text_body(req, data)
     req.body = data["message"]
     req['Content-Type'] = 'text/plain'
+  end
+
+  def set_raw_body(req, data)
+    req.body = data
   end
 
   def create_request(tag, time, record)
