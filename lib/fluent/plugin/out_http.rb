@@ -6,9 +6,10 @@ require 'fluent/plugin/output'
 class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   Fluent::Plugin.register_output('http', self)
 
-  helpers :compat_parameters
+  helpers :compat_parameters, :formatter
 
   DEFAULT_BUFFER_TYPE = "memory"
+  DEFAULT_FORMATTER = "json"
 
   def initialize
     super
@@ -52,8 +53,12 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
     config_set_default :chunk_keys, ['tag']
   end
 
+  config_section :format do
+    config_set_default :@type, DEFAULT_FORMATTER
+  end
+
   def configure(conf)
-    compat_parameters_convert(conf, :buffer)
+    compat_parameters_convert(conf, :buffer, :formatter)
     super
 
     @ssl_verify_mode = if @ssl_no_verify
@@ -65,6 +70,10 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
     @ca_file = @cacert_file
     @last_request_time = nil
     raise Fluent::ConfigError, "'tag' in chunk_keys is required." if !@chunk_key_tag && @buffered
+
+    if @formatter_config = conf.elements('format').first
+      @formatter = formatter_create
+    end
   end
 
   def start
@@ -179,6 +188,9 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   end # end send_request
 
   def handle_record(tag, time, record)
+    if @formatter_config
+      record = @formatter.format(tag, time, record)
+    end
     req, uri = create_request(tag, time, record)
     send_request(req, uri)
   end
