@@ -104,6 +104,8 @@ class HTTPOutputTestBase < Test::Unit::TestCase
           elsif req.content_type == 'text/plain'
             puts req
             record[:data] = req.body
+          elsif req.content_type == 'application/octet-stream'
+            record[:data] = req.body
           else
             record[:form] = Hash[*(req.body.split('&').map{|kv|kv.split('=')}.flatten)]
           end
@@ -217,6 +219,11 @@ class HTTPOutputTest < HTTPOutputTestBase
   CONFIG_TEXT = %[
     endpoint_url http://127.0.0.1:#{port}/api/
     serializer text
+  ]
+
+  CONFIG_RAW = %[
+    endpoint_url http://127.0.0.1:#{port}/api/
+    serializer raw
   ]
 
   CONFIG_PUT = %[
@@ -467,6 +474,18 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_equal 1, @posts.size
     record = @posts[0]
     assert_equal 'hello', record[:data]
+    assert_nil record[:auth]
+  end
+
+  def test_emit_raw
+    binary_string = "\xe3\x81\x82"
+    d = create_driver CONFIG_RAW + %[format msgpack]
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ "message" => "hello" })
+    end
+    assert_equal 1, @posts.size
+    record = @posts[0]
+    assert_equal ({ "message" => "hello" }).to_msgpack, record[:data]
     assert_nil record[:auth]
   end
 

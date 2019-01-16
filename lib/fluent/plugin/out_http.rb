@@ -123,7 +123,8 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   end
 
   def set_raw_body(req, data)
-    req.body = data
+    req.body = data.to_s
+    req['Content-Type'] = 'application/octet-stream'
   end
 
   def create_request(tag, time, record)
