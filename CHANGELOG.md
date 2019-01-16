@@ -1,5 +1,8 @@
 # Changelog
 
+### 1.1.5
+* Add :raw serializer
+
 ### 1.1.4
 * Add custom formatter feature
 * Tweak Travis CI tasks
