@@ -1,19 +1,19 @@
 # Changelog
 
-### 1.1.6
+## 1.1.6
 * Pass chunk directly info built-in placeholder instead of chunk.metadata
 
-### 1.1.5
+## 1.1.5
 * Add :raw serializer
 
-### 1.1.4
+## 1.1.4
 * Add custom formatter feature
 * Tweak Travis CI tasks
 
-### 1.1.3
+## 1.1.3
 * Send query_string to endpoint_url
 
-### 1.1.2
+## 1.1.2
 * Added custom headers feature
 
 ## 1.1.1
