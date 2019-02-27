@@ -1,6 +1,6 @@
 # Changelog
 
-# 1.1.6
+### 1.1.6
 * Pass chunk directly info built-in placeholder instead of chunk.metadata
 
 ### 1.1.5
