@@ -226,7 +226,7 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
 
   def write(chunk)
     tag = chunk.metadata.tag
-    @endpoint_url = extract_placeholders(@endpoint_url, chunk.metadata)
+    @endpoint_url = extract_placeholders(@endpoint_url, chunk)
     chunk.msgpack_each do |time, record|
       handle_record(tag, time, record)
     end
