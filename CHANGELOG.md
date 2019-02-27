@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.1.7
+* Fix dependent Fluentd version
+
 ## 1.1.6
 * Pass chunk directly info built-in placeholder instead of chunk.metadata
 
