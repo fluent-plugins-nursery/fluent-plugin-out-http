@@ -2,6 +2,7 @@ require 'net/http'
 require 'uri'
 require 'yajl'
 require 'fluent/plugin/output'
+require 'openssl'
 
 class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   Fluent::Plugin.register_output('http', self)
@@ -36,6 +37,15 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
 
   # ca file to use for https request
   config_param :cacert_file, :string, :default => ''
+
+  # specify client sertificate
+  config_param :client_cert_path, :string, :default => ''
+
+  # specify private key path
+  config_param :private_key_path, :string, :default => ''
+
+  # specify private key passphrase
+  config_param :private_key_passphrase, :string, :default => '', :secret => true
 
   # custom headers
   config_param :custom_headers, :hash, :default => nil
@@ -142,6 +152,8 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
       }
       opts[:verify_mode] = @ssl_verify_mode if opts[:use_ssl]
       opts[:ca_file] = File.join(@ca_file) if File.file?(@ca_file)
+      opts[:cert] = OpenSSL::X509::Certificate.new(File.read(@client_cert_path)) if File.file?(@client_cert_path)
+      opts[:key] = OpenSSL::PKey::RSA.new(File.read(@private_key_path), @private_key_passphrase) if File.file?(@private_key_path)
       opts
   end
 
