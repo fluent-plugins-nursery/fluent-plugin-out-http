@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.0
+* Support mutual authentication
+
 ## 1.1.7
 * Fix dependent Fluentd version
 
