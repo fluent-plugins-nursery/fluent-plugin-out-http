@@ -18,6 +18,9 @@ A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint.
       password        bobpop # default: '', secret: true
       buffered        true   # default: false. Switch non-buffered/buffered mode
       cacert_file     /etc/ssl/endpoint1.cert # default: ''
+      client_cert_path /path/to/client_cert.crt # default: ''
+      private_key_path /path/to/private_key.key # default: ''
+      private_key_passphrase yourpassphrase # default: ''
       token           tokent # default: ''
       custom_headers  {"token":"arbitrary"} # default: nil
     </match>
