@@ -13,6 +13,7 @@ A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint.
       serializer      json   # default: form
       rate_limit_msec 100    # default: 0 = no rate limiting
       raise_on_error  false  # default: true
+      recoverable_status_codes 503, 400 # default: 503
       authentication  basic  # default: none
       username        alice  # default: ''
       password        bobpop # default: '', secret: true
