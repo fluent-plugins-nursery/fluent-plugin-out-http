@@ -106,6 +106,12 @@ class HTTPOutputTestBase < Test::Unit::TestCase
             record[:data] = req.body
           elsif req.content_type == 'application/octet-stream'
             record[:data] = req.body
+          elsif req.content_type == 'application/x-ndjson'
+            data = []
+            req.body.each_line { |l|
+              data << Yajl.load(l)
+            }
+            record[:x_ndjson] = data
           else
             record[:form] = Hash[*(req.body.split('&').map{|kv|kv.split('=')}.flatten)]
           end
@@ -423,6 +429,38 @@ class HTTPOutputTest < HTTPOutputTestBase
       assert_equal 10, record[:json]['field3']
       assert_equal 1, record[:json]['otherfield']
       assert_equal binary_string, record[:json]['binary']
+      assert_nil record[:auth]
+    end
+
+    def test_emit_x_ndjson
+      binary_string = "\xe3\x81\x82"
+      d = create_driver CONFIG_JSON + %[buffered true\nbulk_request]
+      d.run(default_tag: 'test.metrics') do
+        d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => binary_string })
+        d.feed({ 'field1' => 70, 'field2' => 30, 'field3' => 20, 'otherfield' => 2, 'binary' => binary_string })
+      end
+
+      assert_equal 1, @posts.size
+      record = @posts[0]
+
+      expected =[
+        {
+          "binary"     => "\u3042",
+          "field1"     => 50,
+          "field2"     => 20,
+          "field3"     => 10,
+          "otherfield" => 1
+        },
+        {
+          "binary"     => "\u3042",
+          "field1"     => 70,
+          "field2"     => 30,
+          "field3"     => 20,
+          "otherfield" => 2
+        }
+      ]
+
+      assert_equal expected, record[:x_ndjson]
       assert_nil record[:auth]
     end
   end
