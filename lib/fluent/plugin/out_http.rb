@@ -7,6 +7,8 @@ require 'openssl'
 class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   Fluent::Plugin.register_output('http', self)
 
+  class RecoverableResponse < StandardError; end
+
   helpers :compat_parameters, :formatter
 
   DEFAULT_BUFFER_TYPE = "memory"
@@ -34,6 +36,9 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
 
   # Raise errors that were rescued during HTTP requests?
   config_param :raise_on_error, :bool, :default => true
+
+  # Specify recoverable error codes
+  config_param :recoverable_status_codes, :array, value_type: :integer, default: [503]
 
   # ca file to use for https request
   config_param :cacert_file, :string, :default => ''
@@ -201,7 +206,11 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
                         else
                            "res=nil"
                         end
-          log.warn "failed to #{req.method} #{uri} (#{res_summary})"
+          if @recoverable_status_codes.include?(res.code.to_i)
+            raise RecoverableResponse, res_summary
+          else
+            log.warn "failed to #{req.method} #{uri} (#{res_summary})"
+          end
        end #end unless
     end # end begin
   end # end send_request

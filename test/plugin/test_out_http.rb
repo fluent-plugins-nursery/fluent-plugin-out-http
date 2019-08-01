@@ -251,6 +251,7 @@ class HTTPOutputTest < HTTPOutputTestBase
     d = create_driver CONFIG
     assert_equal "http://127.0.0.1:#{self.class.port}/api/", d.instance.endpoint_url
     assert_equal :form, d.instance.serializer
+    assert_equal [503], d.instance.recoverable_status_codes
 
     d = create_driver CONFIG_JSON
     assert_equal "http://127.0.0.1:#{self.class.port}/api/", d.instance.endpoint_url
