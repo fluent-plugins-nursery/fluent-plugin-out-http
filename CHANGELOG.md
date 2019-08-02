@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0
+* Support all private key types
+* Recoverable error codes
+* Bulk request with x-ndjson
+
 ## 1.2.0
 * Support mutual authentication
 
