@@ -62,6 +62,7 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   config_param :token, :string, :default => ''
   # Switch non-buffered/buffered plugin
   config_param :buffered, :bool, :default => false
+  config_param :bulk_request, :bool, :default => false
 
   config_section :buffer do
     config_set_default :@type, DEFAULT_BUFFER_TYPE
@@ -89,6 +90,18 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
     if @formatter_config = conf.elements('format').first
       @formatter = formatter_create
     end
+
+    if @bulk_request
+      class << self
+        alias_method :format, :bulk_request_format
+      end
+      @formatter = formatter_create(type: :json)
+      @serializer = :x_ndjson # secret settings for bulk_request
+    else
+      class << self
+        alias_method :format, :split_request_format
+      end
+    end
   end
 
   def start
@@ -110,6 +123,8 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
       set_text_body(req, record)
     elsif @serializer == :raw
       set_raw_body(req, record)
+    elsif @serializer == :x_ndjson
+      set_bulk_body(req, record)
     else
       req.set_form_data(record)
     end
@@ -140,6 +155,11 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   def set_raw_body(req, data)
     req.body = data.to_s
     req['Content-Type'] = 'application/octet-stream'
+  end
+
+  def set_bulk_body(req, data)
+    req.body = data.to_s
+    req['Content-Type'] = 'application/x-ndjson'
   end
 
   def create_request(tag, time, record)
@@ -223,16 +243,33 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
     send_request(req, uri)
   end
 
+  def handle_records(tag, time, chunk)
+    req, uri = create_request(tag, time, chunk.read)
+    send_request(req, uri)
+  end
+
   def prefer_buffered_processing
     @buffered
   end
 
   def format(tag, time, record)
+    # For safety.
+  end
+
+  def split_request_format(tag, time, record)
     [time, record].to_msgpack
   end
 
+  def bulk_request_format(tag, time, record)
+    @formatter.format(tag, time, record)
+  end
+
   def formatted_to_msgpack_binary?
-    true
+    if @bulk_request
+      false
+    else
+      true
+    end
   end
 
   def multi_workers_ready?
@@ -248,8 +285,13 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   def write(chunk)
     tag = chunk.metadata.tag
     @endpoint_url = extract_placeholders(@endpoint_url, chunk)
-    chunk.msgpack_each do |time, record|
-      handle_record(tag, time, record)
+    if @bulk_request
+      time = Fluent::Engine.now
+      handle_records(tag, time, chunk)
+    else
+      chunk.msgpack_each do |time, record|
+        handle_record(tag, time, record)
+      end
     end
   end
 end
