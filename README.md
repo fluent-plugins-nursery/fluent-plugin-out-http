@@ -19,6 +19,7 @@ A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint.
       password        bobpop # default: '', secret: true
       buffered        true   # default: false. Switch non-buffered/buffered mode
       bulk_request    false  # default: false. Send events as application/x-ndjson
+      compress_request true  # default: false. Send compressed events
       cacert_file     /etc/ssl/endpoint1.cert # default: ''
       client_cert_path /path/to/client_cert.crt # default: ''
       private_key_path /path/to/private_key.key # default: ''
