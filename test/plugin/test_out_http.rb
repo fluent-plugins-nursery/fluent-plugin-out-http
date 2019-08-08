@@ -98,47 +98,29 @@ class HTTPOutputTestBase < Test::Unit::TestCase
             # ok, authorization not required
           end
 
+          expander = -> (req) {
+            if req["Content-Encoding"] == "gzip"
+              StringIO.open(req.body, 'rb'){|sio|
+                Zlib::GzipReader.wrap(sio).read
+              }
+            else
+              req.body
+            end
+          }
+
           record = {:auth => nil}
           if req.content_type == 'application/json'
-            if req["Content-Encoding"] == "gzip"
-              StringIO.open(req.body, 'rb'){|sio|
-                content = Zlib::GzipReader.wrap(sio).read
-                record[:json] = Yajl.load(content)
-              }
-            else
-              record[:json] = Yajl.load(req.body)
-            end
+            record[:json] = Yajl.load(expander.call(req))
           elsif req.content_type == 'text/plain'
             puts req
-            if req["Content-Encoding"] == "gzip"
-              StringIO.open(req.body, 'rb'){|sio|
-                record[:data] = Zlib::GzipReader.wrap(sio).read
-              }
-            else
-              record[:data] = req.body
-            end
+            record[:data] = expander.call(req)
           elsif req.content_type == 'application/octet-stream'
-            if req["Content-Encoding"] == "gzip"
-              StringIO.open(req.body, 'rb'){|sio|
-                record[:data] = Zlib::GzipReader.wrap(sio).read
-              }
-            else
-              record[:data] = req.body
-            end
+            record[:data] = expander.call(req)
           elsif req.content_type == 'application/x-ndjson'
             data = []
-            if req["Content-Encoding"] == "gzip"
-              StringIO.open(req.body, 'rb'){|sio|
-                content = Zlib::GzipReader.wrap(sio).read
-                content.each_line { |l|
-                  data << Yajl.load(l)
-                }
-              }
-            else
-              req.body.each_line { |l|
-                data << Yajl.load(l)
-              }
-            end
+            expander.call(req).each_line { |l|
+              data << Yajl.load(l)
+            }
             record[:x_ndjson] = data
           else
             record[:form] = Hash[*(req.body.split('&').map{|kv|kv.split('=')}.flatten)]
