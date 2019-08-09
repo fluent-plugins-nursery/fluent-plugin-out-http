@@ -442,6 +442,24 @@ class HTTPOutputTest < HTTPOutputTestBase
       assert_nil record[:auth]
     end
 
+    def test_emit_json_with_compression
+      binary_string = "\xe3\x81\x82"
+      d = create_driver CONFIG_JSON + %[buffered true\ncompress_request true]
+      d.run(default_tag: 'test.metrics') do
+        d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => binary_string })
+      end
+
+      assert_equal 1, @posts.size
+      record = @posts[0]
+
+      assert_equal 50, record[:json]['field1']
+      assert_equal 20, record[:json]['field2']
+      assert_equal 10, record[:json]['field3']
+      assert_equal 1, record[:json]['otherfield']
+      assert_equal binary_string, record[:json]['binary']
+      assert_nil record[:auth]
+    end
+
     def test_emit_x_ndjson
       binary_string = "\xe3\x81\x82"
       d = create_driver CONFIG_JSON + %[buffered true\nbulk_request]
