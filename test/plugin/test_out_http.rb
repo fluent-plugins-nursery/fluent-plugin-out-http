@@ -564,7 +564,7 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_nil record[:auth]
   end
 
-  def test_emit_json_with_compress
+  def test_emit_json_with_compression
     binary_string = "\xe3\x81\x82"
     d = create_driver CONFIG_JSON + %[compress_request true]
     d.run(default_tag: 'test.metrics') do
@@ -594,7 +594,7 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_nil record[:auth]
   end
 
-  def test_emit_text_with_compress
+  def test_emit_text_with_compression
     d = create_driver CONFIG_TEXT + %[compress_request true]
     d.run(default_tag: 'test.metrics') do
       d.feed({ "message" => "hello" })
@@ -617,7 +617,7 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_nil record[:auth]
   end
 
-  def test_emit_raw_with_compress
+  def test_emit_raw_with_compression
     binary_string = "\xe3\x81\x82"
     d = create_driver CONFIG_RAW + %[format msgpack\ncompress_request true]
     d.run(default_tag: 'test.metrics') do
