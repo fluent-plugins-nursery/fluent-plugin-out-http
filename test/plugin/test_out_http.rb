@@ -98,17 +98,27 @@ class HTTPOutputTestBase < Test::Unit::TestCase
             # ok, authorization not required
           end
 
+          expander = -> (req) {
+            if req["Content-Encoding"] == "gzip"
+              StringIO.open(req.body, 'rb'){|sio|
+                Zlib::GzipReader.wrap(sio).read
+              }
+            else
+              req.body
+            end
+          }
+
           record = {:auth => nil}
           if req.content_type == 'application/json'
-            record[:json] = Yajl.load(req.body)
+            record[:json] = Yajl.load(expander.call(req))
           elsif req.content_type == 'text/plain'
             puts req
-            record[:data] = req.body
+            record[:data] = expander.call(req)
           elsif req.content_type == 'application/octet-stream'
-            record[:data] = req.body
+            record[:data] = expander.call(req)
           elsif req.content_type == 'application/x-ndjson'
             data = []
-            req.body.each_line { |l|
+            expander.call(req).each_line { |l|
               data << Yajl.load(l)
             }
             record[:x_ndjson] = data
@@ -432,9 +442,59 @@ class HTTPOutputTest < HTTPOutputTestBase
       assert_nil record[:auth]
     end
 
+    def test_emit_json_with_compression
+      binary_string = "\xe3\x81\x82"
+      d = create_driver CONFIG_JSON + %[buffered true\ncompress_request true]
+      d.run(default_tag: 'test.metrics') do
+        d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => binary_string })
+      end
+
+      assert_equal 1, @posts.size
+      record = @posts[0]
+
+      assert_equal 50, record[:json]['field1']
+      assert_equal 20, record[:json]['field2']
+      assert_equal 10, record[:json]['field3']
+      assert_equal 1, record[:json]['otherfield']
+      assert_equal binary_string, record[:json]['binary']
+      assert_nil record[:auth]
+    end
+
     def test_emit_x_ndjson
       binary_string = "\xe3\x81\x82"
       d = create_driver CONFIG_JSON + %[buffered true\nbulk_request]
+      d.run(default_tag: 'test.metrics') do
+        d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => binary_string })
+        d.feed({ 'field1' => 70, 'field2' => 30, 'field3' => 20, 'otherfield' => 2, 'binary' => binary_string })
+      end
+
+      assert_equal 1, @posts.size
+      record = @posts[0]
+
+      expected =[
+        {
+          "binary"     => "\u3042",
+          "field1"     => 50,
+          "field2"     => 20,
+          "field3"     => 10,
+          "otherfield" => 1
+        },
+        {
+          "binary"     => "\u3042",
+          "field1"     => 70,
+          "field2"     => 30,
+          "field3"     => 20,
+          "otherfield" => 2
+        }
+      ]
+
+      assert_equal expected, record[:x_ndjson]
+      assert_nil record[:auth]
+    end
+
+    def test_emit_x_ndjson_with_compression
+      binary_string = "\xe3\x81\x82"
+      d = create_driver CONFIG_JSON + %[buffered true\nbulk_request true\ncompress_request true]
       d.run(default_tag: 'test.metrics') do
         d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => binary_string })
         d.feed({ 'field1' => 70, 'field2' => 30, 'field3' => 20, 'otherfield' => 2, 'binary' => binary_string })
@@ -504,9 +564,38 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_nil record[:auth]
   end
 
+  def test_emit_json_with_compression
+    binary_string = "\xe3\x81\x82"
+    d = create_driver CONFIG_JSON + %[compress_request true]
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => binary_string })
+    end
+
+    assert_equal 1, @posts.size
+    record = @posts[0]
+
+    assert_equal 50, record[:json]['field1']
+    assert_equal 20, record[:json]['field2']
+    assert_equal 10, record[:json]['field3']
+    assert_equal 1, record[:json]['otherfield']
+    assert_equal binary_string, record[:json]['binary']
+    assert_nil record[:auth]
+  end
+
   def test_emit_text
     binary_string = "\xe3\x81\x82"
     d = create_driver CONFIG_TEXT
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ "message" => "hello" })
+    end
+    assert_equal 1, @posts.size
+    record = @posts[0]
+    assert_equal 'hello', record[:data]
+    assert_nil record[:auth]
+  end
+
+  def test_emit_text_with_compression
+    d = create_driver CONFIG_TEXT + %[compress_request true]
     d.run(default_tag: 'test.metrics') do
       d.feed({ "message" => "hello" })
     end
@@ -525,6 +614,18 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_equal 1, @posts.size
     record = @posts[0]
     assert_equal ({ "message" => "hello" }).to_msgpack, record[:data]
+    assert_nil record[:auth]
+  end
+
+  def test_emit_raw_with_compression
+    binary_string = "\xe3\x81\x82"
+    d = create_driver CONFIG_RAW + %[format msgpack\ncompress_request true]
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ "message" => "hello" })
+    end
+    assert_equal 1, @posts.size
+    record = @posts[0]
+    assert_equal ({ "message" => "hello" }).to_msgpack, record[:data].force_encoding("ascii-8bit")
     assert_nil record[:auth]
   end
 

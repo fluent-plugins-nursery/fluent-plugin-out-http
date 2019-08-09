@@ -2,7 +2,9 @@ require 'net/http'
 require 'uri'
 require 'yajl'
 require 'fluent/plugin/output'
+require 'tempfile'
 require 'openssl'
+require 'zlib'
 
 class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   Fluent::Plugin.register_output('http', self)
@@ -63,6 +65,8 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   # Switch non-buffered/buffered plugin
   config_param :buffered, :bool, :default => false
   config_param :bulk_request, :bool, :default => false
+  # Compress with gzip except for form serializer
+  config_param :compress_request, :bool, :default => false
 
   config_section :buffer do
     config_set_default :@type, DEFAULT_BUFFER_TYPE
@@ -142,24 +146,37 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
     end
   end
 
+  def compress_body(req, data)
+    return unless @compress_request
+    gz = Zlib::GzipWriter.new(StringIO.new)
+    gz << data
+
+    req['Content-Encoding'] = "gzip"
+    req.body = gz.close.string
+  end
+
   def set_json_body(req, data)
     req.body = Yajl.dump(data)
     req['Content-Type'] = 'application/json'
+    compress_body(req, req.body)
   end
 
   def set_text_body(req, data)
     req.body = data["message"]
     req['Content-Type'] = 'text/plain'
+    compress_body(req, req.body)
   end
 
   def set_raw_body(req, data)
     req.body = data.to_s
     req['Content-Type'] = 'application/octet-stream'
+    compress_body(req, req.body)
   end
 
   def set_bulk_body(req, data)
     req.body = data.to_s
     req['Content-Type'] = 'application/x-ndjson'
+    compress_body(req, req.body)
   end
 
   def create_request(tag, time, record)
