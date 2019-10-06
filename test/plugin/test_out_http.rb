@@ -471,21 +471,21 @@ class HTTPOutputTest < HTTPOutputTestBase
       assert_equal 1, @posts.size
       record = @posts[0]
 
-      expected =[
-        {
-          "binary"     => "\u3042",
+      expected = [
+        Yajl.dump({
           "field1"     => 50,
           "field2"     => 20,
           "field3"     => 10,
-          "otherfield" => 1
-        },
-        {
+          "otherfield" => 1,
           "binary"     => "\u3042",
+        }) + "\n" +
+        Yajl.dump({
           "field1"     => 70,
           "field2"     => 30,
           "field3"     => 20,
-          "otherfield" => 2
-        }
+          "otherfield" => 2,
+          "binary"     => "\u3042",
+        }) + "\n"
       ]
 
       assert_equal expected, record[:x_ndjson]
@@ -503,21 +503,21 @@ class HTTPOutputTest < HTTPOutputTestBase
       assert_equal 1, @posts.size
       record = @posts[0]
 
-      expected =[
-        {
-          "binary"     => "\u3042",
+      expected = [
+        Yajl.dump({
           "field1"     => 50,
           "field2"     => 20,
           "field3"     => 10,
-          "otherfield" => 1
-        },
-        {
+          "otherfield" => 1,
           "binary"     => "\u3042",
+        }) + "\n" +
+        Yajl.dump({
           "field1"     => 70,
           "field2"     => 30,
           "field3"     => 20,
-          "otherfield" => 2
-        }
+          "otherfield" => 2,
+          "binary"     => "\u3042",
+        }) + "\n"
       ]
 
       assert_equal expected, record[:x_ndjson]
