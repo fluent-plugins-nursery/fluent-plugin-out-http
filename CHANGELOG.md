@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.2
+* Fix invalid x-ndjson payload format
+
 ## 1.3.1
 * Support compression request
 
