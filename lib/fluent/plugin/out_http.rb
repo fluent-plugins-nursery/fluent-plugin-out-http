@@ -174,7 +174,7 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   end
 
   def set_bulk_body(req, data)
-    req.body = Yajl.dump(data)
+    req.body = data.to_s
     req['Content-Type'] = 'application/x-ndjson'
     compress_body(req, req.body)
   end
