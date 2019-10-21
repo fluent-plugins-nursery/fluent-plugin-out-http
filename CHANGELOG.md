@@ -1,4 +1,6 @@
 # Changelog
+## 1.3.3
+* Revert x-ndjson format payload behavior
 
 ## 1.3.2
 * Fix invalid x-ndjson payload format
