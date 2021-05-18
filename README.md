@@ -6,6 +6,34 @@ A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint.
 
 [![Build Status](https://travis-ci.org/fluent-plugins-nursery/fluent-plugin-out-http.svg?branch=master)](https://travis-ci.org/fluent-plugins-nursery/fluent-plugin-out-http)
 
+## Installation
+
+### For bundler
+
+Write the following line in Gemfile:
+
+```gemfile
+gem "fluent-plugin-out-http"
+```
+
+and then,
+
+```console
+$ bundle install
+```
+
+### for fluentd
+
+```console
+$ fluent-gem install fluent-plugin-out-http
+```
+
+### For td-agent
+
+```console
+$ td-agent-gem install fluent-plugin-out-http
+```
+
 ## Configuration options
 
     <match *>
