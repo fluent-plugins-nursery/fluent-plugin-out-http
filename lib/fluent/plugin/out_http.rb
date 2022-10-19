@@ -302,6 +302,9 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   def write(chunk)
     tag = chunk.metadata.tag
     @endpoint_url = extract_placeholders(@endpoint_url, chunk)
+
+    log.debug { "#{@http_method.capitalize} data to #{@endpoint_url} with chunk(#{dump_unique_id_hex(chunk.unique_id)})" }
+
     if @bulk_request
       time = Fluent::Engine.now
       handle_records(tag, time, chunk)
