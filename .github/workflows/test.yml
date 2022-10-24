@@ -1,4 +1,4 @@
-name: Testing on Ubuntu
+name: Test
 on:
   - push
   - pull_request
@@ -11,6 +11,7 @@ jobs:
         ruby: [ '2.5', '2.6', '2.7', '3.0' ]
         os:
           - ubuntu-latest
+          - macOS-latest
     name: Ruby ${{ matrix.ruby }} unit testing on ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
