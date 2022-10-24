@@ -40,4 +40,4 @@ jobs:
           mkdir -p tmp
           cd tmp
           cp -a ../test/ ./
-          ../run-test.rb
+          ../run_test.rb
