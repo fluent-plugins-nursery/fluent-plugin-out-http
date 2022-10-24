@@ -1,4 +1,8 @@
 # Changelog
+## 1.3.4
+* Add debug log about chunk writing
+* Tweak CI
+
 ## 1.3.3
 * Revert x-ndjson format payload behavior
 
