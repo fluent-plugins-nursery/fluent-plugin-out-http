@@ -75,3 +75,11 @@ Heavily based on [fluent-plugin-growthforecast][2]
   [1]: http://fluentd.org/
   [2]: https://github.com/tagomoris/fluent-plugin-growthforecast
   [3]: https://github.com/sabottenda/fluent-plugin-bufferize
+
+## How to release
+
+1. Update `gem.version` of the `gemspec` file.
+1. Update `CHANGELOG.md`.
+1. Commit them.
+1. `$ bundle exec rake release`
+    * It will add and push the tag, and publish the gem.

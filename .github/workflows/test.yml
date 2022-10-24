@@ -1,0 +1,43 @@
+name: Test
+on:
+  - push
+  - pull_request
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: [ '2.7', '3.0', '3.1' ]
+        os:
+          - ubuntu-latest
+          - macOS-latest
+    name: Ruby ${{ matrix.ruby }} unit testing on ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+      - name: unit testing
+        run: |
+          bundle exec rake test
+
+  gem:
+    name: Gem test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.1
+      - name: Install
+        run: |
+          rake install
+          gem install test-unit webrick
+      - name: Test
+        run: |
+          mkdir -p tmp
+          cd tmp
+          cp -a ../test/ ./
+          ../run_test.rb
