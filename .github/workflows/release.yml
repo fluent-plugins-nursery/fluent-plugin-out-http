@@ -1,0 +1,23 @@
+name: Release
+on:
+  push:
+    tags:
+      - "*"
+jobs:
+  create-release-note:
+    name: Create release note
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.1
+      - name: Extract release note
+        run: |
+          ruby -e 'print("## "); puts(ARGF.read.split(/^## /)[1])' CHANGELOG.md \
+            > release-note.md
+      - name: Upload to release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: release-note.md
