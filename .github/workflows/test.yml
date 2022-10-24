@@ -22,3 +22,22 @@ jobs:
       - name: unit testing
         run: |
           bundle exec rake test
+
+  gem:
+    name: Gem test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.1
+      - name: Install
+        run: |
+          rake install
+          gem install test-unit webrick
+      - name: Test
+        run: |
+          mkdir -p tmp
+          cd tmp
+          cp -a ../test/ ./
+          ../run-test.rb
