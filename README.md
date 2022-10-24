@@ -80,8 +80,6 @@ Heavily based on [fluent-plugin-growthforecast][2]
 
 1. Update `gem.version` of the `gemspec` file.
 1. Update `CHANGELOG.md`.
-    * Please follow the format. It will be automatically used for the release note.
 1. Commit them.
 1. `$ bundle exec rake release`
     * It will add and push the tag, and publish the gem.
-    * GitHub workflow `package` will automatically create the release note.
