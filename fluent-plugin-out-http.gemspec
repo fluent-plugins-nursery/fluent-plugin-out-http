@@ -2,9 +2,9 @@
 
 Gem::Specification.new do |gem|
   gem.name          = "fluent-plugin-out-http"
-  gem.version       = "1.3.4"
-  gem.authors       = ["Marica Odagaki"]
-  gem.email         = ["ento.entotto@gmail.com"]
+  gem.version       = "2.0.0"
+  gem.authors       = ["Matthew Cleveland"]
+  gem.email         = ["mgcleveland@gmail.com"]
   gem.summary       = %q{A generic Fluentd output plugin to send logs to an HTTP endpoint}
   gem.description   = gem.summary
   gem.homepage      = "https://github.com/fluent-plugins-nursery/fluent-plugin-out-http"
