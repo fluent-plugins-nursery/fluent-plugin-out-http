@@ -68,6 +68,8 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   # Compress with gzip except for form serializer
   config_param :compress_request, :bool, :default => false
 
+  config_param :enable_chunk_time, :bool, default: false
+
   config_section :buffer do
     config_set_default :@type, DEFAULT_BUFFER_TYPE
     config_set_default :chunk_keys, ['tag']
@@ -117,7 +119,7 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   end
 
   def format_url(tag, time, record)
-    @endpoint_url
+    @current_chunk_endpoint || @endpoint_url
   end
 
   def set_body(req, tag, time, record)
@@ -300,10 +302,20 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   end
 
   def write(chunk)
-    tag = chunk.metadata.tag
-    @endpoint_url = extract_placeholders(@endpoint_url, chunk)
+    endpoint = @endpoint_url.dup
+    if @enable_chunk_time && chunk.metadata && chunk.metadata.respond_to?(:timekey) && chunk.metadata.timekey
+      chunk_time = Time.at(chunk.metadata.timekey).utc
+      formatted_time = chunk_time.strftime('%Y%m%d%H%M%S')
+      # Replace the placeholder with formatted time
+      endpoint = endpoint.gsub('CHUNK_TIME_PLACEHOLDER', formatted_time)
+    end
 
-    log.debug { "#{@http_method.capitalize} data to #{@endpoint_url} with chunk(#{dump_unique_id_hex(chunk.unique_id)})" }
+    uri = URI.parse(endpoint)
+
+    tag = chunk.metadata.tag
+    @current_chunk_endpoint = endpoint
+
+    log.debug { "#{@http_method.capitalize} data to #{@current_chunk_endpoint} with chunk(#{dump_unique_id_hex(chunk.unique_id)})" }
 
     if @bulk_request
       time = Fluent::Engine.now
@@ -313,5 +325,7 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
         handle_record(tag, time, record)
       end
     end
+
+    @current_chunk_endpoint = nil
   end
 end
