@@ -859,6 +859,8 @@ class HTTPSOutputTest < HTTPOutputTestBase
     ssl_no_verify true
     cacert_file /tmp/ssl.cert
     ]
+    cert, _ = WEBrick::Utils.create_self_signed_cert(2048, [["CN", "localhost"]], "Generated Test Cert")
+    File.write('/tmp/ssl.cert', cert.to_pem)
     d = create_driver config
     d.run(default_tag: 'test.metrics') do
       d.feed({ 'field1' => 50 })
