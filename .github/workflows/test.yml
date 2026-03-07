@@ -34,7 +34,7 @@ jobs:
       - name: Install
         run: |
           rake install
-          gem install test-unit webrick
+          gem install test-unit test-unit-rr webrick
       - name: Test
         run: |
           mkdir -p tmp

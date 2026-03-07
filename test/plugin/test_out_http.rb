@@ -8,6 +8,8 @@ require 'fluent/test/driver/output'
 require 'fluent/test/helpers'
 require_relative "./script/plugin/formatter_test"
 
+require 'test/unit/rr'
+
 module OS
   # ref. http://stackoverflow.com/questions/170956/how-can-i-find-which-operating-system-my-ruby-program-is-running-on
   def OS.windows?
@@ -100,9 +102,18 @@ class HTTPOutputTestBase < Test::Unit::TestCase
 
           expander = -> (req) {
             if req["Content-Encoding"] == "gzip"
-              StringIO.open(req.body, 'rb'){|sio|
-                Zlib::GzipReader.wrap(sio).read
-              }
+              sio = StringIO.new(req.body)
+              output = ""
+
+              until sio.eof?
+                gz = Zlib::GzipReader.new(sio)
+                output << gz.read
+                unused = gz.unused
+                if unused
+                  sio.pos -= unused.length
+                end
+              end
+              output
             else
               req.body
             end
@@ -495,6 +506,50 @@ class HTTPOutputTest < HTTPOutputTestBase
     def test_emit_x_ndjson_with_compression
       binary_string = "\xe3\x81\x82"
       d = create_driver CONFIG_JSON + %[buffered true\nbulk_request true\ncompress_request true]
+      d.run(default_tag: 'test.metrics') do
+        d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => binary_string })
+        d.feed({ 'field1' => 70, 'field2' => 30, 'field3' => 20, 'otherfield' => 2, 'binary' => binary_string })
+      end
+
+      assert_equal 1, @posts.size
+      record = @posts[0]
+
+      expected =[
+        {
+          "binary"     => "\u3042",
+          "field1"     => 50,
+          "field2"     => 20,
+          "field3"     => 10,
+          "otherfield" => 1
+        },
+        {
+          "binary"     => "\u3042",
+          "field1"     => 70,
+          "field2"     => 30,
+          "field3"     => 20,
+          "otherfield" => 2
+        }
+      ]
+
+      assert_equal expected, record[:x_ndjson]
+      assert_nil record[:auth]
+    end
+
+    def test_emit_x_ndjson_with_compression_with_compressed_buffer
+      binary_string = "\xe3\x81\x82"
+      d = create_driver CONFIG_JSON + %[
+        buffered true
+        bulk_request true
+        compress_request true
+        <buffer>
+          @type memory
+          compress gzip
+        </buffer>
+      ]
+
+      # Should not recompress
+      dont_allow(Zlib::GzipWriter).new
+
       d.run(default_tag: 'test.metrics') do
         d.feed({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => binary_string })
         d.feed({ 'field1' => 70, 'field2' => 30, 'field3' => 20, 'otherfield' => 2, 'binary' => binary_string })
