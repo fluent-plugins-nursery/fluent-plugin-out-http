@@ -146,12 +146,21 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
     end
   end
 
+  def buffer_compressed?
+    @buffered && @buffer.compress == :gzip
+  end
+
   def compress_body(req, data)
     return unless @compress_request
-    gz = Zlib::GzipWriter.new(StringIO.new)
-    gz << data
 
     req['Content-Encoding'] = "gzip"
+    if buffer_compressed?
+      req.body = data
+      return
+    end
+
+    gz = Zlib::GzipWriter.new(StringIO.new)
+    gz << data
     req.body = gz.close.string
   end
 
@@ -261,7 +270,8 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   end
 
   def handle_records(tag, time, chunk)
-    req, uri = create_request(tag, time, chunk.read)
+    record = buffer_compressed? ? chunk.read(compressed: @buffer.compress) : chunk.read
+    req, uri = create_request(tag, time, record)
     send_request(req, uri)
   end
 
