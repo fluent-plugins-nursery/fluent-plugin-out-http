@@ -61,7 +61,7 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   config_param :authentication, :enum, list: [:none, :basic, :jwt, :bearer],  :default => :none
   config_param :username, :string, :default => ''
   config_param :password, :string, :default => '', :secret => true
-  config_param :token, :string, :default => ''
+  config_param :token, :string, :default => '', :secret => true
   # Switch non-buffered/buffered plugin
   config_param :buffered, :bool, :default => false
   config_param :bulk_request, :bool, :default => false
