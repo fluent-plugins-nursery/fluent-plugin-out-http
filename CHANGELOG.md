@@ -1,4 +1,8 @@
 # Changelog
+## 1.3.5
+* Mask authentication bearer token in logs
+* Avoid unnecessary gzip decompression and recompression
+
 ## 1.3.4
 * Add debug log about chunk writing
 * Tweak CI
