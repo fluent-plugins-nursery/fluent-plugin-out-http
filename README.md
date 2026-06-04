@@ -1,10 +1,10 @@
 # fluent-plugin-out-http, a plugin for [Fluentd](http://fluentd.org)
 
+[![Test](https://github.com/fluent-plugins-nursery/fluent-plugin-out-http/actions/workflows/test.yml/badge.svg)](https://github.com/fluent-plugins-nursery/fluent-plugin-out-http/actions/workflows/test.yml)
+
 A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint.
 
 **NOTE:** This plugin name is overlapped from Fluentd core plugin which name is `out_http`. But core plugin does not provide buffered/non-buffered switch and batch/non-batch request switch. If you want to use these switch features. Please consider to use this plugin.
-
-[![Build Status](https://travis-ci.org/fluent-plugins-nursery/fluent-plugin-out-http.svg?branch=master)](https://travis-ci.org/fluent-plugins-nursery/fluent-plugin-out-http)
 
 ## Installation
 
