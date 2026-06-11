@@ -1,6 +1,5 @@
 require 'net/http'
 require 'uri'
-require 'yajl'
 require 'fluent/plugin/output'
 require 'tempfile'
 require 'openssl'
@@ -165,7 +164,7 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   end
 
   def set_json_body(req, data)
-    req.body = Yajl.dump(data)
+    req.body = JSON.generate(data)
     req['Content-Type'] = 'application/json'
     compress_body(req, req.body)
   end

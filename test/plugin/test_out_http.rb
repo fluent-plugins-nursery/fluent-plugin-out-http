@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 require 'net/http'
 require 'uri'
-require 'yajl'
 require 'fluent/test/http_output_test'
 require 'fluent/plugin/out_http'
 require 'fluent/test/driver/output'
@@ -121,7 +120,7 @@ class HTTPOutputTestBase < Test::Unit::TestCase
 
           record = {:auth => nil}
           if req.content_type == 'application/json'
-            record[:json] = Yajl.load(expander.call(req))
+            record[:json] = JSON.parse(expander.call(req))
           elsif req.content_type == 'text/plain'
             puts req
             record[:data] = expander.call(req)
@@ -130,7 +129,7 @@ class HTTPOutputTestBase < Test::Unit::TestCase
           elsif req.content_type == 'application/x-ndjson'
             data = []
             expander.call(req).each_line { |l|
-              data << Yajl.load(l)
+              data << JSON.parse(l)
             }
             record[:x_ndjson] = data
           else
