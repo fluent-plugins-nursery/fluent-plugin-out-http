@@ -17,7 +17,6 @@ Gem::Specification.new do |gem|
 
   gem.required_ruby_version  = '>= 2.1.0'
 
-  gem.add_runtime_dependency "yajl-ruby", "~> 1.0"
   gem.add_runtime_dependency "fluentd", [">= 0.14.22", "< 2"]
   gem.add_development_dependency "bundler"
   gem.add_development_dependency "rake"
