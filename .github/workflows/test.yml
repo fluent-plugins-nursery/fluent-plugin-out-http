@@ -11,7 +11,7 @@ jobs:
     uses: ruby/actions/.github/workflows/ruby_versions.yml@master
     with:
       engine: cruby
-      min_version: 2.7
+      min_version: 3.2
   build:
     needs: ruby-versions
     runs-on: ${{ matrix.os }}
@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
         with:
-          ruby-version: 3.1
+          ruby-version: 3.2
       - name: Install
         run: |
           rake install

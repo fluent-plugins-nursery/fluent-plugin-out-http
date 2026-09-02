@@ -15,7 +15,7 @@ Gem::Specification.new do |gem|
   gem.test_files    = gem.files.grep(%r{^(test|spec|features)/})
   gem.require_paths = ["lib"]
 
-  gem.required_ruby_version  = '>= 2.1.0'
+  gem.required_ruby_version  = '>= 3.2'
 
   gem.add_runtime_dependency "fluentd", [">= 0.14.22", "< 2"]
   gem.add_development_dependency "bundler"
