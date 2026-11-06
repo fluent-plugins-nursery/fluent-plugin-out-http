@@ -202,7 +202,12 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
       }
       opts[:verify_mode] = @ssl_verify_mode if opts[:use_ssl]
       opts[:ca_file] = File.join(@ca_file) if File.file?(@ca_file)
-      opts[:cert] = OpenSSL::X509::Certificate.new(File.read(@client_cert_path)) if File.file?(@client_cert_path)
+      if File.file?(@client_cert_path)
+        # The file may hold the client certificate followed by its intermediate CAs.
+        cert, *chain = OpenSSL::X509::Certificate.load(File.read(@client_cert_path))
+        opts[:cert] = cert
+        opts[:extra_chain_cert] = chain unless chain.empty?
+      end
       opts[:key] = OpenSSL::PKey.read(File.read(@private_key_path), @private_key_passphrase) if File.file?(@private_key_path)
       opts
   end
