@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 require 'net/http'
 require 'uri'
+require 'tmpdir'
 require 'fluent/test/http_output_test'
 require 'fluent/plugin/out_http'
 require 'fluent/test/driver/output'
@@ -924,5 +925,111 @@ class HTTPSOutputTest < HTTPOutputTestBase
     record = @posts[0]
 
     assert_equal '50', record[:form]['field1']
+  end
+end
+
+class HTTPSClientCertChainOutputTest < HTTPOutputTestBase
+  def self.port
+    5128
+  end
+
+  def self.issue_cert(subject, key, issuer_cert, issuer_key, ca:)
+    cert = OpenSSL::X509::Certificate.new
+    cert.version = 2
+    cert.serial = rand(1 << 64)
+    cert.subject = OpenSSL::X509::Name.parse(subject)
+    cert.issuer = issuer_cert ? issuer_cert.subject : cert.subject
+    cert.public_key = key.public_key
+    cert.not_before = Time.now - 60
+    cert.not_after = Time.now + 3600
+    ef = OpenSSL::X509::ExtensionFactory.new
+    ef.subject_certificate = cert
+    ef.issuer_certificate = issuer_cert || cert
+    cert.add_extension(ef.create_extension("basicConstraints", ca ? "CA:TRUE" : "CA:FALSE", true))
+    cert.add_extension(ef.create_extension("keyUsage", ca ? "keyCertSign,cRLSign" : "digitalSignature", true))
+    cert.sign(issuer_key || key, OpenSSL::Digest::SHA256.new)
+    cert
+  end
+
+  # Root CA -> intermediate CA -> client certificate. The server only trusts the root,
+  # so the client has to send the intermediate along with its own certificate.
+  def self.build_pki
+    begin
+      dir = Dir.mktmpdir
+      root_key = OpenSSL::PKey::RSA.new(2048)
+      root = issue_cert("/CN=test root", root_key, nil, nil, ca: true)
+      inter_key = OpenSSL::PKey::RSA.new(2048)
+      inter = issue_cert("/CN=test intermediate", inter_key, root, root_key, ca: true)
+      client_key = OpenSSL::PKey::RSA.new(2048)
+      client = issue_cert("/CN=test client", client_key, inter, inter_key, ca: false)
+      paths = {
+        root: File.join(dir, "root.crt"),
+        chain: File.join(dir, "client_chain.crt"),
+        key: File.join(dir, "client.key"),
+      }
+      File.write(paths[:root], root.to_pem)
+      File.write(paths[:chain], client.to_pem + inter.to_pem)
+      File.write(paths[:key], client_key.to_pem)
+      { dir: dir, paths: paths, client: client, inter: inter, client_key: client_key }
+    end
+  end
+
+  # Built once up front: the server and the readiness check of setup run in
+  # different threads and must use the same certificates.
+  def self.startup
+    @pki = build_pki
+  end
+
+  def self.shutdown
+    FileUtils.rm_rf(@pki[:dir]) if @pki
+  end
+
+  def self.pki
+    @pki
+  end
+
+  def self.server_config
+    config = super
+    config[:SSLEnable] = true
+    config[:SSLCertName] = [["CN", WEBrick::Utils::getservername]]
+    config[:SSLVerifyClient] = OpenSSL::SSL::VERIFY_PEER | OpenSSL::SSL::VERIFY_FAIL_IF_NO_PEER_CERT
+    config[:SSLCACertificateFile] = pki[:paths][:root]
+    config
+  end
+
+  def self.test_http_client
+    super(
+      use_ssl: true,
+      verify_mode: OpenSSL::SSL::VERIFY_NONE,
+      cert: pki[:client],
+      key: pki[:client_key],
+      extra_chain_cert: [pki[:inter]],
+    )
+  end
+
+  def config
+    %[
+    endpoint_url https://127.0.0.1:#{self.class.port}/api/
+    ssl_no_verify true
+    client_cert_path #{self.class.pki[:paths][:chain]}
+    private_key_path #{self.class.pki[:paths][:key]}
+    ]
+  end
+
+  def test_http_opts_with_client_cert_chain
+    d = create_driver config
+    http_opts = d.instance.http_opts(URI.parse("https://127.0.0.1/"))
+    assert_equal self.class.pki[:client].to_der, http_opts[:cert].to_der
+    assert_equal [self.class.pki[:inter].to_der], http_opts[:extra_chain_cert].map(&:to_der)
+  end
+
+  def test_emit_form_with_client_cert_chain
+    d = create_driver config
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ 'field1' => 50 })
+    end
+
+    assert_equal 1, @posts.size
+    assert_equal '50', @posts[0][:form]['field1']
   end
 end
