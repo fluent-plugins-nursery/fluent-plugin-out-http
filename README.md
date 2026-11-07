@@ -46,7 +46,7 @@ $ td-agent-gem install fluent-plugin-out-http
       raise_on_error  false  # default: true
       recoverable_status_codes 503, 400 # default: 503
       cacert_file     /etc/ssl/endpoint1.cert # default: ''
-      client_cert_path /path/to/client_cert.crt # default: '', may include intermediate CA certificates after the client certificate
+      client_cert_path /path/to/client_cert.crt # default: '', may include intermediate CA certificates after the client certificate. If it does, include every intermediate CA certificate that the server needs
       private_key_path /path/to/private_key.key # default: ''
       private_key_passphrase yourpassphrase # default: ''
       custom_headers  {"token":"arbitrary"} # default: nil

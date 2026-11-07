@@ -970,16 +970,22 @@ class HTTPSClientCertChainOutputTest < HTTPOutputTestBase
       File.write(paths[:root], root.to_pem)
       File.write(paths[:chain], client.to_pem + inter.to_pem)
       File.write(paths[:key], client_key.to_pem)
-      { paths: paths, client: client, inter: inter, client_key: client_key }
+      { dir: dir, paths: paths, client: client, inter: inter, client_key: client_key }
     end
   end
 
   # Built once up front: the server and the readiness check of setup run in
   # different threads and must use the same certificates.
-  PKI = build_pki
+  def self.startup
+    @pki = build_pki
+  end
+
+  def self.shutdown
+    FileUtils.rm_rf(@pki[:dir]) if @pki
+  end
 
   def self.pki
-    PKI
+    @pki
   end
 
   def self.server_config
