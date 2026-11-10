@@ -68,6 +68,11 @@ To send events with bulk_request, you should specify `bulk_request` as `true`
 Note that when this parameter as `true`, Fluentd always send events as `application/x-ndjson`.
 Currently, `application/x-ndjson` is only supported MIME type for bulk_request.
 
+Requests go through the proxy set in the `HTTPS_PROXY`, `HTTP_PROXY`, `http_proxy`
+or `https_proxy` environment variable (the first one set is used for every endpoint).
+Hosts listed in `NO_PROXY` or `no_proxy` (comma separated host names, domain
+suffixes, IP addresses or CIDRs, optionally with `:port`, or `*`) are reached directly.
+
 ----
 
 Heavily based on [fluent-plugin-growthforecast][2]

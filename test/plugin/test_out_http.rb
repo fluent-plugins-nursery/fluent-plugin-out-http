@@ -693,6 +693,56 @@ class HTTPOutputTest < HTTPOutputTestBase
     end
   end
 
+  def with_proxy_env(env)
+    keys = %w(HTTPS_PROXY HTTP_PROXY http_proxy https_proxy NO_PROXY no_proxy)
+    saved = keys.to_h { |k| [k, ENV[k]] }
+    keys.each { |k| ENV.delete(k) }
+    env.each { |k, v| ENV[k] = v }
+    yield
+  ensure
+    saved.each { |k, v| ENV[k] = v }
+  end
+
+  data(
+    'host' => '127.0.0.1',
+    'host and port' => "localhost,127.0.0.1:#{port}",
+    'cidr' => '127.0.0.0/8',
+    'wildcard' => '*',
+    'lowercase variable' => nil,
+  )
+  def test_emit_json_bypasses_proxy_for_no_proxy_hosts(no_proxy)
+    env = { 'HTTP_PROXY' => "http://127.0.0.1:#{self.class.port - 1}" }
+    if no_proxy
+      env['NO_PROXY'] = no_proxy
+    else
+      env['no_proxy'] = '127.0.0.1'
+    end
+
+    with_proxy_env(env) do
+      d = create_driver CONFIG_JSON
+      d.run(default_tag: 'test.metrics') do
+        d.feed({ 'field1' => 50 })
+      end
+    end
+
+    assert_equal 1, @posts.size
+    assert_equal 50, @posts[0][:json]['field1']
+  end
+
+  def test_emit_json_uses_proxy_for_other_hosts
+    env = { 'HTTP_PROXY' => "http://127.0.0.1:#{self.class.port - 1}", 'NO_PROXY' => "example.com,127.0.0.1:#{self.class.port + 1}" }
+    with_proxy_env(env) do
+      d = create_driver CONFIG_JSON
+      assert_raise Errno::ECONNREFUSED do
+        d.run(default_tag: 'test.metrics') do
+          d.feed({ 'field1' => 50 })
+        end
+      end
+    end
+
+    assert_equal 0, @requests
+  end
+
   def test_http_error_is_suppressed_with_raise_on_error_false
     d = create_driver CONFIG_HTTP_ERROR_SUPPRESSED
     d.run(default_tag: 'test.metrics') do
