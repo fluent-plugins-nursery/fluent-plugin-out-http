@@ -187,8 +187,8 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
     compress_body(req, req.body)
   end
 
-  def create_request(tag, time, record)
-    url = format_url(tag, time, record)
+  def create_request(tag, time, record, url = nil)
+    url ||= format_url(tag, time, record)
     uri = URI.parse(url)
     req = Net::HTTP.const_get(@http_method.to_s.capitalize).new(uri.request_uri)
     set_body(req, tag, time, record)
@@ -265,17 +265,17 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
     end # end begin
   end # end send_request
 
-  def handle_record(tag, time, record)
+  def handle_record(tag, time, record, url = nil)
     if @formatter_config
       record = @formatter.format(tag, time, record)
     end
-    req, uri = create_request(tag, time, record)
+    req, uri = create_request(tag, time, record, url)
     send_request(req, uri)
   end
 
-  def handle_records(tag, time, chunk)
+  def handle_records(tag, time, chunk, url)
     record = buffer_compressed? ? chunk.read(compressed: @buffer.compress) : chunk.read
-    req, uri = create_request(tag, time, record)
+    req, uri = create_request(tag, time, record, url)
     send_request(req, uri)
   end
 
@@ -315,16 +315,16 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
 
   def write(chunk)
     tag = chunk.metadata.tag
-    @endpoint_url = extract_placeholders(@endpoint_url, chunk)
+    url = extract_placeholders(@endpoint_url, chunk)
 
-    log.debug { "#{@http_method.capitalize} data to #{@endpoint_url} with chunk(#{dump_unique_id_hex(chunk.unique_id)})" }
+    log.debug { "#{@http_method.capitalize} data to #{url} with chunk(#{dump_unique_id_hex(chunk.unique_id)})" }
 
     if @bulk_request
       time = Fluent::Engine.now
-      handle_records(tag, time, chunk)
+      handle_records(tag, time, chunk, url)
     else
       chunk.msgpack_each do |time, record|
-        handle_record(tag, time, record)
+        handle_record(tag, time, record, url)
       end
     end
   end
