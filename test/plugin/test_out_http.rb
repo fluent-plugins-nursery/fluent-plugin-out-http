@@ -414,7 +414,7 @@ class HTTPOutputTest < HTTPOutputTestBase
       assert_equal "${endpoint}", d.instance.endpoint_url
     end
 
-    def test_emit_form_with_tag_placeholder_for_each_chunk
+    def test_emit_json_with_tag_placeholder_for_each_chunk
       d = create_driver CONFIG_JSON.sub("/api/", "/api/${tag}") + %[buffered true]
       d.run do
         d.feed('first', event_time, { 'field1' => 50 })
