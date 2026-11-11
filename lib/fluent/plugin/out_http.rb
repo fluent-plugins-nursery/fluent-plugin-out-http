@@ -1,5 +1,6 @@
 require 'net/http'
 require 'uri'
+require 'ipaddr'
 require 'fluent/plugin/output'
 require 'tempfile'
 require 'openssl'
@@ -217,11 +218,52 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   end
 
   def no_proxy?(uri)
-    no_proxy = ENV['NO_PROXY'] || ENV['no_proxy']
-    return false if no_proxy.nil? || no_proxy.strip.empty?
+    no_proxy = [ENV['no_proxy'], ENV['NO_PROXY']].find { |v| v && !v.strip.empty? }
+    return false if no_proxy.nil?
     return true if no_proxy.strip == '*'
 
-    !URI::Generic.use_proxy?(uri.hostname, uri.hostname, uri.port, no_proxy)
+    host = uri.hostname.downcase
+    addr = parse_ip_address(host)
+    no_proxy.split(/[\s,]+/).any? { |entry| no_proxy_entry_match?(entry, host, addr, uri.port) }
+  end
+
+  def no_proxy_entry_match?(entry, host, addr, port)
+    entry_host, entry_port = split_no_proxy_entry(entry)
+    return false if entry_host.nil? || entry_host.empty?
+    return false if entry_port && entry_port != port
+
+    entry_addr = parse_ip_address(entry_host)
+    if addr || entry_addr
+      # An IP address or CIDR entry only matches an endpoint given as an IP
+      # address of the same family, and a host name entry never matches one.
+      return !addr.nil? && !entry_addr.nil? && entry_addr.family == addr.family && entry_addr.include?(addr)
+    end
+
+    entry_host = entry_host.downcase
+    if entry_host.start_with?('.')
+      host.end_with?(entry_host)
+    else
+      host == entry_host || host.end_with?(".#{entry_host}")
+    end
+  end
+
+  # Splits a NO_PROXY entry into the host and the port. An IPv6 address or
+  # CIDR has a port only in the bracketed form ("[::1]:8080"), so a bare one
+  # ("::1", "fd00::/8") is kept whole instead of being cut at each ":".
+  def split_no_proxy_entry(entry)
+    if (m = /\A\[([^\]]+)\](?::(\d+))?\z/.match(entry))
+      [m[1], m[2]&.to_i]
+    elsif entry.count(':') > 1
+      [entry, nil]
+    elsif (m = /\A([^:]+)(?::(\d+))?\z/.match(entry))
+      [m[1], m[2]&.to_i]
+    end
+  end
+
+  def parse_ip_address(value)
+    IPAddr.new(value)
+  rescue IPAddr::Error
+    nil
   end
 
   def send_request(req, uri)
@@ -250,7 +292,9 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
                               proxy_uri.host, proxy_uri.port, proxy_uri.user, proxy_uri.password,
                               **http_opts(uri)) {|http| http.request(req) }
       else
-        res = Net::HTTP.start(uri.host, uri.port, **http_opts(uri)) {|http| http.request(req) }
+        # With a proxy variable set, nil keeps Net::HTTP from reading the
+        # proxy variables again, as it does with its default :ENV.
+        res = Net::HTTP.start(uri.host, uri.port, proxy ? nil : :ENV, **http_opts(uri)) {|http| http.request(req) }
       end
 
     rescue => e # rescue all StandardErrors
