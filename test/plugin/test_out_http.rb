@@ -119,7 +119,7 @@ class HTTPOutputTestBase < Test::Unit::TestCase
             end
           }
 
-          record = {:auth => nil}
+          record = {:auth => nil, :path => req.path}
           if req.content_type == 'application/json'
             record[:json] = JSON.parse(expander.call(req))
           elsif req.content_type == 'text/plain'
@@ -411,7 +411,28 @@ class HTTPOutputTest < HTTPOutputTestBase
       end
 
       assert_equal 0, @posts.size # post into other URI
-      assert_equal "http://127.0.0.1:#{self.class.port}/modified-api/", d.instance.endpoint_url
+      assert_equal "${endpoint}", d.instance.endpoint_url
+    end
+
+    def test_emit_json_with_tag_placeholder_for_each_chunk
+      d = create_driver CONFIG_JSON.sub("/api/", "/api/${tag}") + %[buffered true]
+      d.run do
+        d.feed('first', event_time, { 'field1' => 50 })
+        d.feed('second', event_time, { 'field1' => 70 })
+      end
+
+      assert_equal ['/api/first', '/api/second'], @posts.map { |record| record[:path] }.sort
+      assert_equal "http://127.0.0.1:#{self.class.port}/api/${tag}", d.instance.endpoint_url
+    end
+
+    def test_emit_x_ndjson_with_tag_placeholder_for_each_chunk
+      d = create_driver CONFIG_JSON.sub("/api/", "/api/${tag}") + %[buffered true\nbulk_request true]
+      d.run do
+        d.feed('first', event_time, { 'field1' => 50 })
+        d.feed('second', event_time, { 'field1' => 70 })
+      end
+
+      assert_equal ['/api/first', '/api/second'], @posts.map { |record| record[:path] }.sort
     end
 
     def test_emit_form_put
