@@ -145,15 +145,17 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
     end
   end
 
-  def buffer_compressed?
-    @buffered && @buffer.compress == :gzip
+  # A bulk request sends the whole chunk as the body, so a gzip buffer can be
+  # sent as is. Single records are always decompressed by msgpack_each.
+  def send_compressed_chunk?
+    @buffered && @bulk_request && @compress_request && @buffer.compress == :gzip
   end
 
   def compress_body(req, data)
     return unless @compress_request
 
     req['Content-Encoding'] = "gzip"
-    if buffer_compressed?
+    if send_compressed_chunk?
       req.body = data
       return
     end
@@ -274,7 +276,7 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   end
 
   def handle_records(tag, time, chunk, url)
-    record = buffer_compressed? ? chunk.read(compressed: @buffer.compress) : chunk.read
+    record = send_compressed_chunk? ? chunk.read(compressed: @buffer.compress) : chunk.read
     req, uri = create_request(tag, time, record, url)
     send_request(req, uri)
   end

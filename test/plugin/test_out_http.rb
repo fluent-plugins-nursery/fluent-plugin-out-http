@@ -599,6 +599,44 @@ class HTTPOutputTest < HTTPOutputTestBase
       assert_equal expected, record[:x_ndjson]
       assert_nil record[:auth]
     end
+
+    def test_emit_json_with_compression_with_compressed_buffer
+      d = create_driver CONFIG_JSON + %[
+        buffered true
+        compress_request true
+        <buffer>
+          @type memory
+          compress gzip
+        </buffer>
+      ]
+      d.run(default_tag: 'test.metrics') do
+        d.feed({ 'field1' => 50 })
+        d.feed({ 'field1' => 70 })
+      end
+
+      assert_equal 2, @posts.size
+      assert_equal 'gzip', @headers['content-encoding']
+      assert_equal [50, 70], @posts.map { |record| record[:json]['field1'] }
+    end
+
+    def test_emit_x_ndjson_without_compression_with_compressed_buffer
+      d = create_driver CONFIG_JSON + %[
+        buffered true
+        bulk_request true
+        <buffer>
+          @type memory
+          compress gzip
+        </buffer>
+      ]
+      d.run(default_tag: 'test.metrics') do
+        d.feed({ 'field1' => 50 })
+        d.feed({ 'field1' => 70 })
+      end
+
+      assert_equal 1, @posts.size
+      assert_nil @headers['content-encoding']
+      assert_equal [{ 'field1' => 50 }, { 'field1' => 70 }], @posts[0][:x_ndjson]
+    end
   end
 
   def test_emit_form_put
