@@ -294,7 +294,7 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
       else
         # With a proxy variable set, nil keeps Net::HTTP from reading the
         # proxy variables again, as it does with its default :ENV.
-        res = Net::HTTP.start(uri.host, uri.port, proxy ? nil : :ENV, **http_opts(uri)) {|http| http.request(req) }
+        res = Net::HTTP.start(uri.hostname, uri.port, proxy ? nil : :ENV, **http_opts(uri)) {|http| http.request(req) }
       end
 
     rescue => e # rescue all StandardErrors

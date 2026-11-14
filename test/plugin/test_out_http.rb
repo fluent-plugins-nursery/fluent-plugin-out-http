@@ -756,6 +756,20 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_equal 1, @posts.size
   end
 
+  def test_emit_json_bypasses_proxy_for_ipv6_endpoint
+    env = { "http_proxy" => "http://127.0.0.1:#{self.class.port - 1}", "NO_PROXY" => "::1" }
+    with_proxy_env(env) do
+      d = create_driver %[
+        endpoint_url http://[::1]:#{self.class.port}/api/
+        serializer json
+      ]
+      mock(Net::HTTP).start("::1", self.class.port, nil, use_ssl: false) { Net::HTTPOK.new("1.1", "200", "OK") }
+      d.run(default_tag: "test.metrics") do
+        d.feed({ "field1" => 50 })
+      end
+    end
+  end
+
   data(
     'IPv4 endpoint, IPv6 loopback entry' => [false, 'localhost,127.0.0.1,::1', 'http://10.0.0.1:9880/'],
     'IPv4 endpoint, IPv6 CIDR entry' => [false, 'fd00:10:244::/48', 'http://10.0.0.244:9880/'],
