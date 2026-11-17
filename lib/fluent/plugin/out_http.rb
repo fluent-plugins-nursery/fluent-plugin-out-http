@@ -165,14 +165,16 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
     req.body = gz.close.string
   end
 
+  # With a <format> section, handle_record passes the formatted String
+  # instead of the record Hash.
   def set_json_body(req, data)
-    req.body = JSON.generate(data)
+    req.body = data.is_a?(String) ? data : JSON.generate(data)
     req['Content-Type'] = 'application/json'
     compress_body(req, req.body)
   end
 
   def set_text_body(req, data)
-    req.body = data["message"]
+    req.body = data.is_a?(String) ? data : data["message"]
     req['Content-Type'] = 'text/plain'
     compress_body(req, req.body)
   end
