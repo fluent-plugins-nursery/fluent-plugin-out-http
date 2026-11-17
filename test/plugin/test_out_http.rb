@@ -726,6 +726,21 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_equal({ "field1" => 50 }, @posts[0][:json])
   end
 
+  def test_emit_json_with_non_json_format_section
+    d = create_driver CONFIG_JSON + %[
+      <format>
+        @type single_value
+      </format>
+    ]
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ "message" => "hello" })
+      d.feed({ "message" => "42" })
+    end
+    assert_equal 2, @posts.size
+    assert_equal "hello\n", @posts[0][:json]
+    assert_equal "42\n", @posts[1][:json]
+  end
+
   def test_emit_raw
     binary_string = "\xe3\x81\x82"
     d = create_driver CONFIG_RAW + %[format msgpack]

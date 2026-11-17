@@ -1,6 +1,7 @@
 require 'net/http'
 require 'uri'
 require 'fluent/plugin/output'
+require 'fluent/plugin/formatter_json'
 require 'tempfile'
 require 'openssl'
 require 'zlib'
@@ -165,10 +166,10 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
     req.body = gz.close.string
   end
 
-  # With a <format> section, handle_record passes the formatted String
-  # instead of the record Hash.
+  # With a json <format> section, handle_record passes the formatted String
+  # instead of the record Hash. Any other String is sent as a JSON string.
   def set_json_body(req, data)
-    req.body = data.is_a?(String) ? data : JSON.generate(data)
+    req.body = data.is_a?(String) && @formatter.is_a?(Fluent::Plugin::JSONFormatter) ? data : JSON.generate(data)
     req['Content-Type'] = 'application/json'
     compress_body(req, req.body)
   end
