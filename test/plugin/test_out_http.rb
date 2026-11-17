@@ -694,7 +694,7 @@ class HTTPOutputTest < HTTPOutputTestBase
   end
 
   def with_proxy_env(env)
-    keys = %w(HTTPS_PROXY HTTP_PROXY http_proxy https_proxy NO_PROXY no_proxy)
+    keys = %w(HTTPS_PROXY HTTP_PROXY http_proxy https_proxy NO_PROXY no_proxy REQUEST_METHOD CGI_HTTP_PROXY)
     saved = keys.to_h { |k| [k, ENV[k]] }
     keys.each { |k| ENV.delete(k) }
     env.each { |k, v| ENV[k] = v }
@@ -768,6 +768,33 @@ class HTTPOutputTest < HTTPOutputTestBase
         d.feed({ "field1" => 50 })
       end
     end
+  end
+
+  def test_emit_json_keeps_brackets_in_connect_for_cgi_http_proxy
+    proxy = TCPServer.new("127.0.0.1", 0)
+    request_line = nil
+    thread = Thread.new do
+      client = proxy.accept
+      request_line = client.gets
+      client.write("HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n")
+      client.close
+    end
+    env = { "REQUEST_METHOD" => "POST", "CGI_HTTP_PROXY" => "http://127.0.0.1:#{proxy.addr[1]}" }
+    with_proxy_env(env) do
+      d = create_driver %[
+        endpoint_url https://[2001:db8::1]:9880/api/
+        serializer json
+        raise_on_error false
+      ]
+      d.run(default_tag: "test.metrics") do
+        d.feed({ "field1" => 50 })
+      end
+    end
+    thread.join(5)
+
+    assert_equal "CONNECT [2001:db8::1]:9880 HTTP/1.1\r\n", request_line
+  ensure
+    proxy&.close
   end
 
   data(
