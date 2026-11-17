@@ -698,6 +698,49 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_nil record[:auth]
   end
 
+  def test_emit_text_with_format_section
+    d = create_driver CONFIG_TEXT + %[
+      <format>
+        @type single_value
+      </format>
+    ]
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ "message" => "hello" })
+      d.feed({ "message" => "message from the app" })
+    end
+    assert_equal 2, @posts.size
+    assert_equal "hello\n", @posts[0][:data]
+    assert_equal "message from the app\n", @posts[1][:data]
+  end
+
+  def test_emit_json_with_format_section
+    d = create_driver CONFIG_JSON + %[
+      <format>
+        @type json
+      </format>
+    ]
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ "field1" => 50 })
+    end
+    assert_equal 1, @posts.size
+    assert_equal({ "field1" => 50 }, @posts[0][:json])
+  end
+
+  def test_emit_json_with_non_json_format_section
+    d = create_driver CONFIG_JSON + %[
+      <format>
+        @type single_value
+      </format>
+    ]
+    d.run(default_tag: 'test.metrics') do
+      d.feed({ "message" => "hello" })
+      d.feed({ "message" => "42" })
+    end
+    assert_equal 2, @posts.size
+    assert_equal "hello\n", @posts[0][:json]
+    assert_equal "42\n", @posts[1][:json]
+  end
+
   def test_emit_raw
     binary_string = "\xe3\x81\x82"
     d = create_driver CONFIG_RAW + %[format msgpack]
