@@ -218,7 +218,9 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
   end
 
   def no_proxy?(uri)
-    no_proxy = [ENV['no_proxy'], ENV['NO_PROXY']].find { |v| v && !v.strip.empty? }
+    # Invalid bytes would make strip and split raise, so scrub them. An entry
+    # with an invalid byte then matches nothing, and the others still work.
+    no_proxy = [ENV['no_proxy'], ENV['NO_PROXY']].map { |v| v&.scrub }.find { |v| v && !v.strip.empty? }
     return false if no_proxy.nil?
     return true if no_proxy.strip == '*'
 

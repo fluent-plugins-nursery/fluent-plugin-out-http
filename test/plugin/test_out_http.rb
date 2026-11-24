@@ -831,6 +831,14 @@ class HTTPOutputTest < HTTPOutputTestBase
     end
   end
 
+  def test_no_proxy_ignores_invalid_bytes
+    d = create_driver CONFIG_JSON
+    with_proxy_env('no_proxy' => "m\xFCller.test,127.0.0.1".b) do
+      assert_true d.instance.send(:no_proxy?, URI.parse("http://127.0.0.1:#{self.class.port}/"))
+      assert_false d.instance.send(:no_proxy?, URI.parse("http://192.0.2.1/"))
+    end
+  end
+
   def test_http_error_is_suppressed_with_raise_on_error_false
     d = create_driver CONFIG_HTTP_ERROR_SUPPRESSED
     d.run(default_tag: 'test.metrics') do
