@@ -731,6 +731,152 @@ class HTTPOutputTest < HTTPOutputTestBase
     end
   end
 
+  def with_proxy_env(env)
+    keys = %w(HTTPS_PROXY HTTP_PROXY http_proxy https_proxy NO_PROXY no_proxy REQUEST_METHOD CGI_HTTP_PROXY)
+    saved = keys.to_h { |k| [k, ENV[k]] }
+    keys.each { |k| ENV.delete(k) }
+    env.each { |k, v| ENV[k] = v }
+    yield
+  ensure
+    saved.each { |k, v| ENV[k] = v }
+  end
+
+  data(
+    'host' => '127.0.0.1',
+    'host and port' => "localhost,127.0.0.1:#{port}",
+    'cidr' => '127.0.0.0/8',
+    'wildcard' => '*',
+    'lowercase variable' => nil,
+  )
+  def test_emit_json_bypasses_proxy_for_no_proxy_hosts(no_proxy)
+    env = { 'HTTP_PROXY' => "http://127.0.0.1:#{self.class.port - 1}" }
+    if no_proxy
+      env['NO_PROXY'] = no_proxy
+    else
+      env['no_proxy'] = '127.0.0.1'
+    end
+
+    with_proxy_env(env) do
+      d = create_driver CONFIG_JSON
+      d.run(default_tag: 'test.metrics') do
+        d.feed({ 'field1' => 50 })
+      end
+    end
+
+    assert_equal 1, @posts.size
+    assert_equal 50, @posts[0][:json]['field1']
+  end
+
+  def test_emit_json_uses_proxy_for_other_hosts
+    env = { 'HTTP_PROXY' => "http://127.0.0.1:#{self.class.port - 1}", 'NO_PROXY' => "example.com,127.0.0.1:#{self.class.port + 1}" }
+    with_proxy_env(env) do
+      d = create_driver CONFIG_JSON
+      assert_raise Errno::ECONNREFUSED do
+        d.run(default_tag: 'test.metrics') do
+          d.feed({ 'field1' => 50 })
+        end
+      end
+    end
+
+    assert_equal 0, @requests
+  end
+
+  def test_emit_json_bypasses_env_proxy_for_wildcard
+    env = { "http_proxy" => "http://127.0.0.1:#{self.class.port - 1}", "NO_PROXY" => "*" }
+    with_proxy_env(env) do
+      d = create_driver CONFIG_JSON
+      mock.proxy(Net::HTTP).start("127.0.0.1", self.class.port, nil, use_ssl: false)
+      d.run(default_tag: "test.metrics") do
+        d.feed({ "field1" => 50 })
+      end
+    end
+
+    assert_equal 1, @posts.size
+  end
+
+  def test_emit_json_bypasses_proxy_for_ipv6_endpoint
+    env = { "http_proxy" => "http://127.0.0.1:#{self.class.port - 1}", "NO_PROXY" => "::1" }
+    with_proxy_env(env) do
+      d = create_driver %[
+        endpoint_url http://[::1]:#{self.class.port}/api/
+        serializer json
+      ]
+      mock(Net::HTTP).start("::1", self.class.port, nil, use_ssl: false) { Net::HTTPOK.new("1.1", "200", "OK") }
+      d.run(default_tag: "test.metrics") do
+        d.feed({ "field1" => 50 })
+      end
+    end
+  end
+
+  def test_emit_json_keeps_brackets_in_connect_for_cgi_http_proxy
+    proxy = TCPServer.new("127.0.0.1", 0)
+    request_line = nil
+    thread = Thread.new do
+      client = proxy.accept
+      request_line = client.gets
+      client.write("HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n")
+      client.close
+    end
+    env = { "REQUEST_METHOD" => "POST", "CGI_HTTP_PROXY" => "http://127.0.0.1:#{proxy.addr[1]}" }
+    with_proxy_env(env) do
+      d = create_driver %[
+        endpoint_url https://[2001:db8::1]:9880/api/
+        serializer json
+        raise_on_error false
+      ]
+      d.run(default_tag: "test.metrics") do
+        d.feed({ "field1" => 50 })
+      end
+    end
+    thread.join(5)
+
+    assert_equal "CONNECT [2001:db8::1]:9880 HTTP/1.1\r\n", request_line
+  ensure
+    proxy&.close
+  end
+
+  data(
+    'IPv4 endpoint, IPv6 loopback entry' => [false, 'localhost,127.0.0.1,::1', 'http://10.0.0.1:9880/'],
+    'IPv4 endpoint, IPv6 CIDR entry' => [false, 'fd00:10:244::/48', 'http://10.0.0.244:9880/'],
+    'IPv6 loopback' => [true, '::1', 'http://[::1]:9880/'],
+    'IPv6 CIDR' => [true, 'fd00::/8', 'http://[fd00::5]:9880/'],
+    'IPv6 CIDR, other address' => [false, 'fd00::/8', 'http://[fe80::5]:9880/'],
+    'bracketed IPv6 with port' => [true, '[::1]:9880', 'http://[::1]:9880/'],
+    'bracketed IPv6 with other port' => [false, '[::1]:9881', 'http://[::1]:9880/'],
+    'IPv4 CIDR' => [true, 'example.com, 10.0.0.0/8', 'http://10.1.2.3:9880/'],
+    'IPv4 CIDR, IPv6 endpoint' => [false, '0.0.0.0/0', 'http://[::1]:9880/'],
+    'IP entry, host name endpoint' => [false, '10.0.0.0/8', 'http://app.test:9880/'],
+    'host name' => [true, 'app.test', 'http://APP.test:9880/'],
+    'subdomain of host name' => [true, 'test', 'http://app.test:9880/'],
+    'domain suffix' => [true, '.svc.cluster.local', 'http://app.ns.svc.cluster.local:9880/'],
+    'host name with port' => [true, 'app.test:9880', 'http://app.test:9880/'],
+    'host name with other port' => [false, 'app.test:9881', 'http://app.test:9880/'],
+    'partial label' => [false, 'pp.test', 'http://app.test:9880/'],
+    'wildcard in a list' => [false, 'localhost,*', 'http://app.test:9880/'],
+  )
+  def test_no_proxy_matching(data)
+    expected, no_proxy, url = data
+    d = create_driver CONFIG_JSON
+    with_proxy_env('NO_PROXY' => no_proxy) do
+      assert_equal expected, d.instance.send(:no_proxy?, URI.parse(url))
+    end
+  end
+
+  def test_no_proxy_skips_empty_variable
+    d = create_driver CONFIG_JSON
+    with_proxy_env('NO_PROXY' => '', 'no_proxy' => '127.0.0.1') do
+      assert_true d.instance.send(:no_proxy?, URI.parse("http://127.0.0.1:#{self.class.port}/"))
+    end
+  end
+
+  def test_no_proxy_ignores_invalid_bytes
+    d = create_driver CONFIG_JSON
+    with_proxy_env('no_proxy' => "m\xFCller.test,127.0.0.1".b) do
+      assert_true d.instance.send(:no_proxy?, URI.parse("http://127.0.0.1:#{self.class.port}/"))
+      assert_false d.instance.send(:no_proxy?, URI.parse("http://192.0.2.1/"))
+    end
+  end
+
   def test_http_error_is_suppressed_with_raise_on_error_false
     d = create_driver CONFIG_HTTP_ERROR_SUPPRESSED
     d.run(default_tag: 'test.metrics') do
