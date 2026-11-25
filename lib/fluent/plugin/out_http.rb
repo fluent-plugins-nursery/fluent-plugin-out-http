@@ -166,14 +166,18 @@ class Fluent::Plugin::HTTPOutput < Fluent::Plugin::Output
     req.body = gz.close.string
   end
 
+  # With a json <format> section, handle_record passes the formatted String
+  # instead of the record Hash. Any other String is sent as a JSON string.
   def set_json_body(req, data)
-    req.body = JSON.generate(data)
+    # Check the constant instead of requiring formatter_json. The require would
+    # replace a json formatter that a user registers from a plugin directory.
+    req.body = data.is_a?(String) && defined?(Fluent::Plugin::JSONFormatter) && @formatter.is_a?(Fluent::Plugin::JSONFormatter) ? data : JSON.generate(data)
     req['Content-Type'] = 'application/json'
     compress_body(req, req.body)
   end
 
   def set_text_body(req, data)
-    req.body = data["message"]
+    req.body = data.is_a?(String) ? data : data["message"]
     req['Content-Type'] = 'text/plain'
     compress_body(req, req.body)
   end
